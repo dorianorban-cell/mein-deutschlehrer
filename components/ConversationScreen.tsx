@@ -83,9 +83,14 @@ export default function ConversationScreen({ profile }: Props) {
         const audioBlob = await speakRes.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
-        audio.onended = () => { URL.revokeObjectURL(audioUrl); setStatus("idle"); };
-        audio.onerror = () => { URL.revokeObjectURL(audioUrl); setStatus("idle"); };
-        await audio.play();
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        audio.onerror = () => URL.revokeObjectURL(audioUrl);
+        try {
+          await audio.play();
+        } catch {
+          // autoplay blocked or unsupported — audio won't play but that's ok
+        }
+        setStatus("idle"); // unlock input as soon as audio starts (or fails)
       } else {
         setStatus("idle");
       }

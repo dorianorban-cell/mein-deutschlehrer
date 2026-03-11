@@ -34,8 +34,9 @@ export default function VoiceButton({ onTranscript, disabled }: Props) {
         stream.getTracks().forEach((t) => t.stop());
         setBtnState("processing");
 
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
+        const baseMimeType = mimeType.split(";")[0]; // strip ";codecs=opus" — Whisper rejects it
+        const blob = new Blob(chunksRef.current, { type: baseMimeType });
+        const ext = baseMimeType.includes("mp4") ? "mp4" : baseMimeType.includes("ogg") ? "ogg" : "webm";
         const formData = new FormData();
         formData.append("audio", blob, `recording.${ext}`);
 
