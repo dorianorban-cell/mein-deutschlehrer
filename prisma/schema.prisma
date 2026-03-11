@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id        String    @id @default(cuid())
+  name      String
+  level     String    @default("A1") // A1, A2, B1, B2, C1
+  facts     String    @default("[]") // JSON array of remembered facts
+  createdAt DateTime  @default(now())
+
+  sessions  Session[]
+  messages  Message[]
+  mistakes  Mistake[]
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  profileId String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  mistakes  Mistake[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  profileId String
+  sessionId String
+  role      String   // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Mistake {
+  id         String   @id @default(cuid())
+  profileId  String
+  sessionId  String
+  original   String
+  corrected  String
+  rule       String
+  category   String   // word_order, case, gender, tense, vocab, etc.
+  count      Int      @default(1)
+  firstSeen  DateTime @default(now())
+  lastSeen   DateTime @default(now())
+
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  session    Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
