@@ -3,8 +3,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { buildSystemPrompt } from "@/lib/prompts";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 interface Correction {
   original: string;
   corrected: string;
@@ -96,6 +94,7 @@ export async function POST(request: Request) {
   ];
 
   // 7. Call Claude
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const aiMessage = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1024,
