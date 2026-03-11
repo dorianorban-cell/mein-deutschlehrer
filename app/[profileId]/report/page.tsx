@@ -21,17 +21,10 @@ export default async function ReportPage({ params }: Props) {
   const profile = await prisma.profile.findUnique({ where: { id: profileId } });
   if (!profile) notFound();
 
-  const [mistakes, sessions] = await Promise.all([
-    prisma.mistake.findMany({
-      where: { profileId },
-      orderBy: { count: "desc" },
-    }),
-    prisma.session.findMany({
-      where: { profileId },
-      orderBy: { startedAt: "desc" },
-      select: { id: true, startedAt: true, endedAt: true },
-    }),
-  ]);
+  const mistakes = await prisma.mistake.findMany({
+    where: { profileId },
+    orderBy: { count: "desc" },
+  });
 
   const totalOccurrences = mistakes.reduce((sum, m) => sum + m.count, 0);
 
@@ -53,12 +46,6 @@ export default async function ReportPage({ params }: Props) {
     ...m,
     firstSeen: m.firstSeen.toISOString(),
     lastSeen: m.lastSeen.toISOString(),
-  }));
-
-  const serialisedSessions = sessions.map((s) => ({
-    ...s,
-    startedAt: s.startedAt.toISOString(),
-    endedAt: s.endedAt?.toISOString() ?? null,
   }));
 
   return (
@@ -97,7 +84,6 @@ export default async function ReportPage({ params }: Props) {
       {/* Report content */}
       <ReportView
         mistakes={serialisedMistakes}
-        sessions={serialisedSessions}
         totalOccurrences={totalOccurrences}
         profileName={profile.name}
         generatedDate={generatedDate}
