@@ -27,6 +27,7 @@ export default function ConversationScreen({ profile }: Props) {
   const [showMistakePanel, setShowMistakePanel] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [callMode, setCallMode] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
   const voiceButtonRef = useRef<VoiceButtonHandle>(null);
   const callModeRef = useRef(false);
@@ -72,7 +73,7 @@ export default function ConversationScreen({ profile }: Props) {
             source.onended = done;
             source.start(0);
           })
-          .catch(() => playViaElement(bufCopy, done));
+          .catch((e) => { console.error("decodeAudioData failed:", e); playViaElement(bufCopy, done); });
       } else {
         playViaElement(bufCopy, done);
       }
@@ -89,12 +90,12 @@ export default function ConversationScreen({ profile }: Props) {
       el.onerror = finish;
       el.src = url;
       el.load();
-      el.play().catch(finish);
+      el.play().catch((e) => { console.error("el.play() failed:", e); finish(); });
     } else {
       const audio = new Audio(url);
       audio.onended = finish;
       audio.onerror = finish;
-      audio.play().catch(finish);
+      audio.play().catch((e) => { console.error("audio.play() failed:", e); finish(); });
     }
   }
 
@@ -149,7 +150,12 @@ export default function ConversationScreen({ profile }: Props) {
 
       if (speakRes.ok) {
         const arrayBuffer = await speakRes.arrayBuffer();
+        console.log("speak ok, buffer bytes:", arrayBuffer.byteLength, "audioCtx:", audioCtxRef.current?.state ?? "null");
         await playTTS(arrayBuffer);
+      } else {
+        const errText = await speakRes.text().catch(() => speakRes.status.toString());
+        console.error("speak failed:", speakRes.status, errText);
+        setAudioError(`Speak API error ${speakRes.status}: ${errText.slice(0, 80)}`);
       }
 
       // After audio finishes (or if speak failed), go idle and auto-listen in call mode
@@ -189,6 +195,14 @@ export default function ConversationScreen({ profile }: Props) {
     <div className="flex flex-col flex-1 overflow-hidden relative">
       {/* Hidden persistent audio element for reliable playback */}
       <audio ref={audioElRef} style={{ display: "none" }} />
+
+      {/* Audio error banner — helps diagnose TTS issues */}
+      {audioError && (
+        <div className="bg-red-900/80 border border-red-700 text-red-200 text-xs px-3 py-2 mx-4 mt-2 rounded-lg flex justify-between items-center">
+          <span>🔇 {audioError}</span>
+          <button onClick={() => setAudioError(null)} className="ml-2 text-red-400 hover:text-white">✕</button>
+        </div>
+      )}
 
       <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ${showMistakePanel ? "md:mr-72" : ""}`}>
         <ConversationFeed messages={messages} status={status} profileName={profile.name} />
