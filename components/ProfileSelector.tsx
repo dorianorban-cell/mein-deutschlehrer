@@ -12,14 +12,6 @@ interface Profile {
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1"];
 
-const LEVEL_COLORS: Record<string, string> = {
-  A1: "bg-emerald-900 text-emerald-300",
-  A2: "bg-teal-900 text-teal-300",
-  B1: "bg-blue-900 text-blue-300",
-  B2: "bg-violet-900 text-violet-300",
-  C1: "bg-rose-900 text-rose-300",
-};
-
 export default function ProfileSelector() {
   const router = useRouter();
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -55,102 +47,117 @@ export default function ProfileSelector() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4">
-      {/* Profile cards */}
+    <div className="w-full flex flex-col items-center gap-5">
+      {/* Profile cards grid */}
       {profiles.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 w-full">
           {profiles.map((profile) => (
             <button
               key={profile.id}
               onClick={() => router.push(`/${profile.id}`)}
-              className="group flex flex-col items-start gap-3 p-6 rounded-2xl bg-gray-900 border border-gray-800 hover:border-gray-600 hover:bg-gray-800 transition-all duration-150 text-left"
+              className="group relative flex flex-col rounded-2xl overflow-hidden border border-white/10 hover:border-neon/40 transition-all duration-200 aspect-square bg-white/5 hover:bg-white/8"
             >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-2xl font-bold text-white group-hover:text-gray-100">
-                  {profile.name}
-                </span>
-                <span
-                  className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                    LEVEL_COLORS[profile.level] ?? "bg-gray-800 text-gray-400"
-                  }`}
-                >
-                  {profile.level}
-                </span>
-              </div>
-              <span className="text-sm text-gray-500">
-                Profil öffnen →
+              {/* Level badge */}
+              <span className="absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-app-bg/80 text-neon border border-neon/30 z-10">
+                {profile.level}
               </span>
+
+              {/* Avatar placeholder */}
+              <div className="flex-1 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white/40" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div className="pb-3 text-center">
+                <span className="text-white font-semibold text-sm">{profile.name}</span>
+              </div>
             </button>
           ))}
+
+          {/* New profile card */}
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex flex-col items-center justify-center rounded-2xl aspect-square border-2 border-dashed border-white/15 hover:border-neon/40 text-white/30 hover:text-neon/70 transition-all duration-200"
+            >
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-2">
+                <span className="text-2xl leading-none font-light">+</span>
+              </div>
+              <span className="text-xs font-medium tracking-wide">Neues Profil</span>
+            </button>
+          )}
         </div>
       )}
 
-      {/* New profile form / button */}
-      {showForm ? (
-        <form
-          onSubmit={handleCreate}
-          className="bg-gray-900 border border-gray-700 rounded-2xl p-6 flex flex-col gap-4"
+      {/* New profile button when no profiles exist */}
+      {profiles.length === 0 && !showForm && (
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex flex-col items-center justify-center rounded-2xl w-36 h-36 border-2 border-dashed border-white/15 hover:border-neon/40 text-white/30 hover:text-neon/70 transition-all duration-200"
         >
-          <h3 className="text-lg font-semibold text-white">Neues Profil</h3>
+          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-2">
+            <span className="text-2xl leading-none font-light">+</span>
+          </div>
+          <span className="text-xs font-medium tracking-wide">Neues Profil</span>
+        </button>
+      )}
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-400" htmlFor="profile-name">
-              Name
-            </label>
+      {/* Create profile form */}
+      {showForm && (
+        <div className="w-full bg-card-bg border border-neon/15 rounded-2xl p-5 flex flex-col gap-4">
+          <h3 className="text-sm font-semibold text-white tracking-wide">Neues Profil</h3>
+
+          <form onSubmit={handleCreate} className="flex flex-col gap-3">
             <input
-              id="profile-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="z.B. Anna"
+              placeholder="Dein Name"
               required
               autoFocus
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-neon/40 focus:ring-1 focus:ring-neon/20 transition-colors"
             />
-          </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-400" htmlFor="profile-level">
-              Niveau
-            </label>
             <select
-              id="profile-level"
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-neon/40 focus:ring-1 focus:ring-neon/20 transition-colors"
             >
               {LEVELS.map((l) => (
-                <option key={l} value={l}>
+                <option key={l} value={l} className="bg-gray-900">
                   {l}
                 </option>
               ))}
             </select>
-          </div>
 
-          <div className="flex gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-white text-gray-950 font-semibold rounded-lg px-4 py-2.5 hover:bg-gray-100 disabled:opacity-50 transition-colors"
-            >
-              {loading ? "Wird erstellt…" : "Profil erstellen"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-            >
-              Abbrechen
-            </button>
-          </div>
-        </form>
-      ) : (
-        <button
-          onClick={() => setShowForm(true)}
-          className="w-full sm:w-auto flex items-center gap-2 px-6 py-3 rounded-2xl border border-dashed border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white transition-all duration-150"
-        >
-          <span className="text-xl leading-none">+</span>
-          <span className="font-medium">Neues Profil</span>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-neon text-app-bg font-semibold text-sm rounded-xl px-4 py-2.5 hover:brightness-110 disabled:opacity-50 transition-all neon-glow-sm"
+              >
+                {loading ? "Erstelle…" : "Erstellen"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2.5 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors text-sm"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Manage profiles button */}
+      {profiles.length > 0 && (
+        <button className="mt-1 px-6 py-2.5 rounded-full border border-white/15 text-white/50 hover:border-white/30 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors">
+          Profile verwalten
         </button>
       )}
     </div>

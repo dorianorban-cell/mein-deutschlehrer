@@ -17,12 +17,6 @@ export interface Message {
 
 type Status = "idle" | "thinking" | "speaking";
 
-const STATUS_LABELS: Record<Status, string> = {
-  idle: "",
-  thinking: "Max denkt nach…",
-  speaking: "Max spricht…",
-};
-
 interface Props {
   messages: Message[];
   status: Status;
@@ -37,22 +31,24 @@ export default function ConversationFeed({ messages, status, profileName }: Prop
   }, [messages, status]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 space-y-3">
+    <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3 scrollbar-none">
       {messages.length === 0 && (
         <div className="flex flex-col items-center justify-center h-full gap-3 text-center pt-16">
-          <p className="text-4xl">🇩🇪</p>
-          <p className="text-gray-400 text-sm max-w-xs">
-            Hallo {profileName}! Drücke den Mikrofon-Button oder schreibe auf Deutsch.
+          <p className="text-3xl">🇩🇪</p>
+          <p className="text-white/30 text-sm max-w-xs">
+            Hallo {profileName}! Schreibe hier auf Deutsch.
           </p>
         </div>
       )}
 
       {messages.map((msg, i) => (
-        <div key={i} className="space-y-1">
-          {/* Message bubble */}
+        <div key={i} className="space-y-1.5">
           <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
-              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white mr-2 mt-1 shrink-0">
+              <div
+                className="w-7 h-7 rounded-full border border-neon/40 flex items-center justify-center text-xs font-black text-neon mr-2 mt-0.5 shrink-0 neon-glow-sm"
+                style={{ background: "radial-gradient(circle at 38% 32%, #1a2e1a, #060a06)" }}
+              >
                 M
               </div>
             )}
@@ -60,8 +56,8 @@ export default function ConversationFeed({ messages, status, profileName }: Prop
               className={`
                 max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap
                 ${msg.role === "user"
-                  ? "bg-gray-700 text-white rounded-tr-sm"
-                  : "bg-gray-800 text-gray-100 rounded-tl-sm"
+                  ? "bg-neon/15 text-white border border-neon/20 rounded-tr-sm"
+                  : "card-dark text-white/85 rounded-tl-sm"
                 }
               `}
             >
@@ -69,18 +65,17 @@ export default function ConversationFeed({ messages, status, profileName }: Prop
             </div>
           </div>
 
-          {/* Inline corrections block (shown after user message) */}
           {msg.role === "user" && msg.corrections && msg.corrections.length > 0 && (
             <div className="flex justify-end">
-              <div className="max-w-[80%] mr-0 space-y-2 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3">
+              <div className="max-w-[80%] space-y-2 bg-red-950/40 border border-red-900/40 rounded-xl px-4 py-3">
                 {msg.corrections.map((c, ci) => (
                   <div key={ci} className="space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap text-sm font-mono">
                       <span className="text-red-400 line-through">{c.original}</span>
-                      <span className="text-gray-500">→</span>
-                      <span className="text-green-400">{c.corrected}</span>
+                      <span className="text-white/30">→</span>
+                      <span className="text-neon">{c.corrected}</span>
                     </div>
-                    <p className="text-xs text-gray-500">💡 {c.rule}</p>
+                    <p className="text-xs text-white/30">💡 {c.rule}</p>
                   </div>
                 ))}
               </div>
@@ -89,19 +84,23 @@ export default function ConversationFeed({ messages, status, profileName }: Prop
         </div>
       ))}
 
-      {/* Thinking / speaking indicator */}
       {status !== "idle" && (
         <div className="flex justify-start">
-          <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white mr-2 mt-1 shrink-0">
+          <div
+            className="w-7 h-7 rounded-full border border-neon/40 flex items-center justify-center text-xs font-black text-neon mr-2 mt-0.5 shrink-0"
+            style={{ background: "radial-gradient(circle at 38% 32%, #1a2e1a, #060a06)" }}
+          >
             M
           </div>
-          <div className="bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
+          <div className="card-dark rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
             <span className="flex gap-1">
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+              <span className="w-1.5 h-1.5 bg-neon rounded-full animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 bg-neon rounded-full animate-bounce [animation-delay:150ms]" />
+              <span className="w-1.5 h-1.5 bg-neon rounded-full animate-bounce [animation-delay:300ms]" />
             </span>
-            <span className="text-xs text-gray-400">{STATUS_LABELS[status]}</span>
+            <span className="text-xs text-white/30">
+              {status === "thinking" ? "Max denkt…" : "Max spricht…"}
+            </span>
           </div>
         </div>
       )}

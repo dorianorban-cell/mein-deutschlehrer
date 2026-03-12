@@ -12,7 +12,7 @@ export interface VoiceButtonHandle {
 interface Props {
   onTranscript: (text: string) => void;
   disabled: boolean;
-  autoMode?: boolean; // when true: click once to start, silence detection auto-stops
+  autoMode?: boolean;
 }
 
 const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
@@ -36,7 +36,6 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
         chunksRef.current = [];
         recordingStartRef.current = Date.now();
 
-        // Silence detection in auto mode
         if (autoMode) {
           const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
           const audioContext = new AudioCtx();
@@ -47,14 +46,13 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
           source.connect(analyser);
 
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
-          const SILENCE_THRESHOLD = 8;   // RMS level 0–100
-          const SILENCE_DURATION = 2500; // ms of silence before auto-stop
-          const MIN_RECORD_TIME = 1000;  // don't stop in first 1s
+          const SILENCE_THRESHOLD = 8;
+          const SILENCE_DURATION = 2500;
+          const MIN_RECORD_TIME = 1000;
           let silenceStart: number | null = null;
 
           const checkSilence = () => {
             if (mediaRecorderRef.current?.state !== "recording") return;
-
             analyser.getByteTimeDomainData(dataArray);
             let sum = 0;
             for (let i = 0; i < dataArray.length; i++) {
@@ -63,7 +61,6 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
             }
             const rms = Math.sqrt(sum / dataArray.length) * 100;
             const elapsed = Date.now() - recordingStartRef.current;
-
             if (elapsed > MIN_RECORD_TIME) {
               if (rms < SILENCE_THRESHOLD) {
                 if (!silenceStart) silenceStart = Date.now();
@@ -75,7 +72,6 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
                 silenceStart = null;
               }
             }
-
             requestAnimationFrame(checkSilence);
           };
           requestAnimationFrame(checkSilence);
@@ -100,14 +96,9 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
           formData.append("audio", blob, `recording.${ext}`);
 
           try {
-            const res = await fetch("/api/transcribe", {
-              method: "POST",
-              body: formData,
-            });
+            const res = await fetch("/api/transcribe", { method: "POST", body: formData });
             const data = await res.json();
-            if (data.transcript?.trim()) {
-              onTranscript(data.transcript);
-            }
+            if (data.transcript?.trim()) onTranscript(data.transcript);
           } catch (err) {
             console.error("Transcription error:", err);
           } finally {
@@ -134,7 +125,6 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
 
     const isDisabled = disabled || btnState === "processing";
 
-    // In auto mode: single click toggles. In manual mode: hold to record.
     const clickHandlers = autoMode
       ? {
           onClick: () => {
@@ -151,7 +141,7 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
         };
 
     return (
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-2">
         <button
           {...clickHandlers}
           disabled={isDisabled}
@@ -165,43 +155,43 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
               : "Zum Sprechen gedrückt halten"
           }
           className={`
-            relative w-24 h-24 md:w-20 md:h-20 rounded-full flex items-center justify-center
-            transition-all duration-150 select-none touch-none
+            relative w-20 h-20 rounded-full flex items-center justify-center
+            transition-all duration-200 select-none touch-none
             ${isDisabled && btnState !== "recording"
-              ? "opacity-40 cursor-not-allowed bg-gray-800 border-2 border-gray-700"
+              ? "opacity-40 cursor-not-allowed bg-neon/20 border-2 border-neon/20"
               : btnState === "recording"
-              ? "bg-red-600 border-2 border-red-400 scale-110 shadow-lg shadow-red-900/50"
-              : "bg-gray-800 border-2 border-gray-600 hover:border-gray-400 hover:bg-gray-700 cursor-pointer active:scale-95"
+              ? "bg-neon scale-110 neon-glow border-2 border-neon"
+              : "bg-neon neon-glow hover:brightness-110 active:scale-95 border-2 border-neon cursor-pointer"
             }
           `}
         >
           {btnState === "processing" ? (
-            <svg className="w-7 h-7 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg className="w-7 h-7 text-app-bg animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
           ) : btnState === "recording" ? (
             <>
-              <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
-              <svg className="w-8 h-8 text-white relative z-10" fill="currentColor" viewBox="0 0 24 24">
+              <span className="absolute inset-0 rounded-full bg-neon animate-ping opacity-25" />
+              <svg className="w-8 h-8 text-app-bg relative z-10" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
               </svg>
             </>
           ) : (
-            <svg className="w-8 h-8 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-app-bg" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 1a4 4 0 014 4v7a4 4 0 01-8 0V5a4 4 0 014-4zm0 2a2 2 0 00-2 2v7a2 2 0 004 0V5a2 2 0 00-2-2zm-7 9a7 7 0 0014 0h2a9 9 0 01-8 8.94V22h2v2H9v-2h2v-1.06A9 9 0 013 12h2z" />
             </svg>
           )}
         </button>
 
-        <p className="text-xs text-gray-500 select-none">
+        <p className="text-xs text-white/30 select-none">
           {btnState === "recording"
-            ? "Aufnahme läuft…"
+            ? "Tap to stop speaking"
             : btnState === "processing"
             ? "Wird transkribiert…"
             : autoMode
             ? "Tippen zum Sprechen"
-            : "Gedrückt halten zum Sprechen"}
+            : "Gedrückt halten"}
         </p>
       </div>
     );

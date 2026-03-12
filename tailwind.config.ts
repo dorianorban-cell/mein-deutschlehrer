@@ -11,6 +11,11 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        neon: "#4ade80",
+        "neon-dark": "#16a34a",
+        "app-bg": "#060a06",
+        "card-bg": "#0d150d",
+        "border-neon": "rgba(74,222,128,0.18)",
       },
     },
   },

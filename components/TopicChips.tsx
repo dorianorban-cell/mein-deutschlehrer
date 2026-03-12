@@ -24,7 +24,7 @@ export default function TopicChips({ onSelect, disabled }: Props) {
           key={topic.label}
           onClick={() => onSelect(topic.message)}
           disabled={disabled}
-          className="shrink-0 text-xs px-3 py-1.5 rounded-full border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="shrink-0 text-xs px-3 py-1.5 rounded-full border border-neon/20 text-neon/60 hover:border-neon/50 hover:text-neon hover:bg-neon/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           {topic.label}
         </button>
