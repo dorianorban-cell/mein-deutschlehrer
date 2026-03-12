@@ -55,100 +55,47 @@ export default function ConversationScreen({ profile }: Props) {
     }
   }
 
-  // Plays a streaming TTS response progressively (starts playing on first chunk).
-  // Falls back to buffered playback on Safari where MediaSource doesn't support audio/mpeg.
-  function playTTS(response: Response): Promise<void> {
+  // Play TTS audio. Tries AudioContext first (bypasses autoplay), falls back to DOM audio element.
+  function playTTS(arrayBuffer: ArrayBuffer): Promise<void> {
     return new Promise((resolve) => {
       const done = () => resolve();
-      const el = audioElRef.current;
-      if (!el) { done(); return; }
+      const bufCopy = arrayBuffer.slice(0); // preserve for fallback (decodeAudioData detaches)
 
-      const supportsStreaming =
-        typeof MediaSource !== "undefined" &&
-        MediaSource.isTypeSupported("audio/mpeg");
-
-      if (supportsStreaming && response.body) {
-        // Progressive playback via MediaSource — starts on first chunk
-        const ms = new MediaSource();
-        const url = URL.createObjectURL(ms);
-
-        ms.addEventListener("sourceopen", async () => {
-          let sb: SourceBuffer;
-          try {
-            sb = ms.addSourceBuffer("audio/mpeg");
-          } catch {
-            // Codec rejected — fall back
-            URL.revokeObjectURL(url);
-            response.arrayBuffer().then((buf) => playBuffered(buf, el, done)).catch(() => done());
-            return;
-          }
-
-          const reader = response.body!.getReader();
-          let playStarted = false;
-
-          const appendNext = async () => {
-            try {
-              const { done: streamDone, value } = await reader.read();
-              if (streamDone) {
-                if (!sb.updating) ms.endOfStream();
-                else sb.addEventListener("updateend", () => ms.endOfStream(), { once: true });
-                return;
-              }
-              if (sb.updating) {
-                await new Promise<void>((r) => sb.addEventListener("updateend", () => r(), { once: true }));
-              }
-              sb.appendBuffer(value);
-              if (!playStarted) {
-                playStarted = true;
-                el.play().catch(() => {});
-              }
-              sb.addEventListener("updateend", appendNext, { once: true });
-            } catch { done(); }
-          };
-
-          appendNext();
-        }, { once: true });
-
-        el.onended = () => { URL.revokeObjectURL(url); done(); };
-        el.onerror = () => { URL.revokeObjectURL(url); done(); };
-        el.src = url;
+      if (audioCtxRef.current) {
+        const ctx = audioCtxRef.current;
+        Promise.resolve(ctx.state === "suspended" ? ctx.resume() : undefined)
+          .then(() => ctx.decodeAudioData(arrayBuffer))
+          .then((decoded) => {
+            const source = ctx.createBufferSource();
+            source.buffer = decoded;
+            source.connect(ctx.destination);
+            source.onended = done;
+            source.start(0);
+          })
+          .catch(() => playViaElement(bufCopy, done));
       } else {
-        // Safari fallback: buffer the whole thing then play
-        response.arrayBuffer()
-          .then((buf) => playBuffered(buf, el, done))
-          .catch(() => done());
+        playViaElement(bufCopy, done);
       }
     });
   }
 
-  function playBuffered(arrayBuffer: ArrayBuffer, el: HTMLAudioElement, done: () => void) {
-    const bufCopy = arrayBuffer.slice(0);
-    // Try AudioContext first
-    if (audioCtxRef.current) {
-      const ctx = audioCtxRef.current;
-      Promise.resolve(ctx.state === "suspended" ? ctx.resume() : undefined)
-        .then(() => ctx.decodeAudioData(arrayBuffer))
-        .then((decoded) => {
-          const source = ctx.createBufferSource();
-          source.buffer = decoded;
-          source.connect(ctx.destination);
-          source.onended = done;
-          source.start(0);
-        })
-        .catch(() => playViaElement(bufCopy, el, done));
-    } else {
-      playViaElement(bufCopy, el, done);
-    }
-  }
-
-  function playViaElement(arrayBuffer: ArrayBuffer, el: HTMLAudioElement, done: () => void) {
+  function playViaElement(arrayBuffer: ArrayBuffer, done: () => void) {
     const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
     const url = URL.createObjectURL(blob);
-    el.onended = () => { URL.revokeObjectURL(url); done(); };
-    el.onerror = () => { URL.revokeObjectURL(url); done(); };
-    el.src = url;
-    el.load();
-    el.play().catch(() => { URL.revokeObjectURL(url); done(); });
+    const finish = () => { URL.revokeObjectURL(url); done(); };
+    const el = audioElRef.current;
+    if (el) {
+      el.onended = finish;
+      el.onerror = finish;
+      el.src = url;
+      el.load();
+      el.play().catch(finish);
+    } else {
+      const audio = new Audio(url);
+      audio.onended = finish;
+      audio.onerror = finish;
+      audio.play().catch(finish);
+    }
   }
 
   async function sendMessage(text: string) {
@@ -201,7 +148,8 @@ export default function ConversationScreen({ profile }: Props) {
       });
 
       if (speakRes.ok) {
-        await playTTS(speakRes);
+        const arrayBuffer = await speakRes.arrayBuffer();
+        await playTTS(arrayBuffer);
       }
 
       // After audio finishes (or if speak failed), go idle and auto-listen in call mode
