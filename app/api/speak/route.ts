@@ -14,12 +14,11 @@ export async function POST(request: Request) {
     input: text,
   });
 
-  const buffer = await speech.arrayBuffer();
-
-  return new Response(buffer, {
+  // Stream directly from OpenAI — client starts playing on first chunk
+  return new Response(speech.body, {
     headers: {
       "Content-Type": "audio/mpeg",
-      "Content-Length": buffer.byteLength.toString(),
+      "Transfer-Encoding": "chunked",
     },
   });
 }

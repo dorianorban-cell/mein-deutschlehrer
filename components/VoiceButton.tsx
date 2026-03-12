@@ -48,8 +48,8 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
 
           const dataArray = new Uint8Array(analyser.frequencyBinCount);
           const SILENCE_THRESHOLD = 8;   // RMS level 0–100
-          const SILENCE_DURATION = 1500; // ms of silence before auto-stop
-          const MIN_RECORD_TIME = 600;   // don't stop in first 600ms
+          const SILENCE_DURATION = 2500; // ms of silence before auto-stop
+          const MIN_RECORD_TIME = 1000;  // don't stop in first 1s
           let silenceStart: number | null = null;
 
           const checkSilence = () => {

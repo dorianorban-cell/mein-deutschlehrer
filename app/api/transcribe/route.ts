@@ -16,5 +16,27 @@ export async function POST(request: Request) {
     language: "de",
   });
 
-  return NextResponse.json({ transcript: transcription.text });
+  const text = transcription.text.trim();
+
+  // Filter Whisper hallucinations that occur on silence/near-silence input
+  const HALLUCINATIONS = [
+    "untertitel",
+    "amara.org",
+    "thank you for watching",
+    "thanks for watching",
+    "subscribe",
+    "vielen dank",
+    "tschüss",
+    "auf wiedersehen",
+  ];
+  const lower = text.toLowerCase();
+  const isHallucination =
+    text.length < 3 ||
+    HALLUCINATIONS.some((h) => lower.includes(h));
+
+  if (isHallucination) {
+    return NextResponse.json({ transcript: "" });
+  }
+
+  return NextResponse.json({ transcript: text });
 }
