@@ -29,22 +29,74 @@ export default function ConversationScreen({ profile }: Props) {
   const [callMode, setCallMode] = useState(false);
 
   const voiceButtonRef = useRef<VoiceButtonHandle>(null);
-  const callModeRef = useRef(false); // ref so closures inside sendMessage always see current value
+  const callModeRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // Persistent DOM audio element — more reliable than new Audio() for autoplay
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   function setCallModeSync(val: boolean) {
     callModeRef.current = val;
     setCallMode(val);
   }
 
+  // Must be called synchronously inside a user gesture to unlock audio
   function unlockAudio() {
     if (!audioCtxRef.current) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx = window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audioCtxRef.current = new AudioCtx();
     }
     if (audioCtxRef.current.state === "suspended") {
       audioCtxRef.current.resume();
     }
+    // Also trigger the DOM audio element (ensures it's "user-activated")
+    if (audioElRef.current) {
+      audioElRef.current.play().catch(() => {});
+    }
+  }
+
+  // Plays audio from an ArrayBuffer. Tries AudioContext first, falls back to Audio element.
+  function playTTS(arrayBuffer: ArrayBuffer): Promise<void> {
+    return new Promise((resolve) => {
+      const done = () => resolve();
+
+      // Keep a copy in case AudioContext detaches the buffer on failure
+      const bufferCopy = arrayBuffer.slice(0);
+
+      const fallback = () => {
+        const blob = new Blob([bufferCopy], { type: "audio/mpeg" });
+        const url = URL.createObjectURL(blob);
+        if (audioElRef.current) {
+          audioElRef.current.onended = () => { URL.revokeObjectURL(url); done(); };
+          audioElRef.current.onerror = () => { URL.revokeObjectURL(url); done(); };
+          audioElRef.current.src = url;
+          audioElRef.current.load();
+          audioElRef.current.play().catch(() => { URL.revokeObjectURL(url); done(); });
+        } else {
+          // Last resort
+          const audio = new Audio(url);
+          audio.onended = () => { URL.revokeObjectURL(url); done(); };
+          audio.onerror  = () => { URL.revokeObjectURL(url); done(); };
+          audio.play().catch(() => { URL.revokeObjectURL(url); done(); });
+        }
+      };
+
+      if (audioCtxRef.current) {
+        const ctx = audioCtxRef.current;
+        Promise.resolve(ctx.state === "suspended" ? ctx.resume() : undefined)
+          .then(() => ctx.decodeAudioData(arrayBuffer))
+          .then((decoded) => {
+            const source = ctx.createBufferSource();
+            source.buffer = decoded;
+            source.connect(ctx.destination);
+            source.onended = done;
+            source.start(0);
+          })
+          .catch(() => fallback());
+      } else {
+        fallback();
+      }
+    });
   }
 
   async function sendMessage(text: string) {
@@ -86,10 +138,9 @@ export default function ConversationScreen({ profile }: Props) {
         setSessionCorrections((prev) => [...prev, ...chatData.corrections]);
       }
 
-      const assistantMessage: Message = { role: "assistant", content: chatData.reply };
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, { role: "assistant", content: chatData.reply }]);
 
-      // Play TTS via AudioContext (bypasses autoplay restrictions)
+      // Fetch and play TTS
       setStatus("speaking");
       const speakRes = await fetch("/api/speak", {
         method: "POST",
@@ -97,27 +148,15 @@ export default function ConversationScreen({ profile }: Props) {
         body: JSON.stringify({ text: chatData.reply }),
       });
 
-      function onAudioDone() {
-        setStatus("idle");
-        if (callModeRef.current) {
-          setTimeout(() => voiceButtonRef.current?.startRecording(), 400);
-        }
+      if (speakRes.ok) {
+        const arrayBuffer = await speakRes.arrayBuffer();
+        await playTTS(arrayBuffer);
       }
 
-      if (speakRes.ok && audioCtxRef.current) {
-        try {
-          const arrayBuffer = await speakRes.arrayBuffer();
-          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer);
-          const source = audioCtxRef.current.createBufferSource();
-          source.buffer = decoded;
-          source.connect(audioCtxRef.current.destination);
-          source.onended = onAudioDone;
-          source.start(0);
-        } catch {
-          onAudioDone();
-        }
-      } else {
-        onAudioDone();
+      // After audio finishes (or if speak failed), go idle and auto-listen in call mode
+      setStatus("idle");
+      if (callModeRef.current) {
+        setTimeout(() => voiceButtonRef.current?.startRecording(), 400);
       }
     } catch (err) {
       console.error("Pipeline error:", err);
@@ -149,26 +188,27 @@ export default function ConversationScreen({ profile }: Props) {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden relative">
+      {/* Hidden persistent audio element for reliable playback */}
+      <audio ref={audioElRef} style={{ display: "none" }} />
+
       <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ${showMistakePanel ? "md:mr-72" : ""}`}>
-        <ConversationFeed
-          messages={messages}
-          status={status}
-          profileName={profile.name}
-        />
+        <ConversationFeed messages={messages} status={status} profileName={profile.name} />
 
         {/* Input area */}
         <div className="border-t border-gray-800 bg-gray-950 px-4 pt-3 pb-4 shrink-0">
           <div className="max-w-2xl mx-auto flex flex-col items-center gap-3">
 
-            {/* Topic chips — hidden during active call */}
             {!callMode && (
-              <TopicChips onSelect={sendMessage} disabled={status !== "idle"} />
+              <TopicChips onSelect={(t) => { unlockAudio(); sendMessage(t); }} disabled={status !== "idle"} />
             )}
 
-            {/* Call mode status bar */}
             {callMode && (
               <div className="flex items-center gap-2 text-sm text-gray-400">
-                <span className={`w-2 h-2 rounded-full ${status === "speaking" ? "bg-blue-400 animate-pulse" : status === "thinking" ? "bg-yellow-400 animate-pulse" : "bg-green-400 animate-pulse"}`} />
+                <span className={`w-2 h-2 rounded-full ${
+                  status === "speaking" ? "bg-blue-400 animate-pulse" :
+                  status === "thinking" ? "bg-yellow-400 animate-pulse" :
+                  "bg-green-400 animate-pulse"
+                }`} />
                 {callStatusLabel}
               </div>
             )}
@@ -186,7 +226,6 @@ export default function ConversationScreen({ profile }: Props) {
                 />
               </div>
 
-              {/* Mistake panel toggle */}
               <button
                 onClick={() => setShowMistakePanel((v) => !v)}
                 className="relative w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
@@ -203,14 +242,13 @@ export default function ConversationScreen({ profile }: Props) {
               </button>
             </div>
 
-            {/* Start / End Call button */}
+            {/* Start / End Call */}
             {!callMode ? (
               <button
                 onClick={startCall}
                 disabled={status !== "idle"}
                 className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-full transition-colors"
               >
-                {/* Phone icon */}
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
                 </svg>
@@ -221,7 +259,6 @@ export default function ConversationScreen({ profile }: Props) {
                 onClick={endCall}
                 className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-full transition-colors"
               >
-                {/* End call icon */}
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.69.28-.27 0-.52-.11-.7-.29L.29 13c-.18-.18-.29-.43-.29-.69 0-.27.11-.52.29-.7C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.61c.18.18.29.43.29.7 0 .26-.11.51-.29.69l-2.5 2.56c-.18.18-.43.29-.7.29-.26 0-.51-.1-.69-.28-.79-.73-1.68-1.36-2.66-1.85-.33-.16-.56-.51-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
                 </svg>
@@ -229,7 +266,7 @@ export default function ConversationScreen({ profile }: Props) {
               </button>
             )}
 
-            {/* Text fallback — always visible */}
+            {/* Text fallback */}
             <form onSubmit={handleTextSubmit} className="flex w-full gap-2">
               <input
                 type="text"
@@ -251,7 +288,6 @@ export default function ConversationScreen({ profile }: Props) {
         </div>
       </div>
 
-      {/* Mistake panel */}
       <MistakePanel
         corrections={sessionCorrections}
         isOpen={showMistakePanel}
