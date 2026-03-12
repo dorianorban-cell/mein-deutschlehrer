@@ -87,14 +87,14 @@ Never skip ahead. Each task depends on the previous one.
 ---
 
 ## PHASE 8 — Deploy to Vercel
-- [ ] 8.1 Create .gitignore — make sure .env.local is in it
-- [ ] 8.2 Run `git init && git add . && git commit -m "initial commit"`
+- [x] 8.1 Create .gitignore — make sure .env.local is in it
+- [x] 8.2 Run `git init && git add . && git commit -m "initial commit"`
 - [ ] 8.3 Create GitHub repository and push code
 - [ ] 8.4 Connect repo to Vercel at vercel.com
 - [ ] 8.5 Add ANTHROPIC_API_KEY and OPENAI_API_KEY in Vercel env vars
 - [ ] 8.6 Create Vercel Postgres database, copy DATABASE_URL
-- [ ] 8.7 Change schema.prisma provider from "sqlite" to "postgresql"
-- [ ] 8.8 Run `npx prisma generate` and push updated code
+- [x] 8.7 Change schema.prisma provider from "sqlite" to "postgresql"
+- [x] 8.8 Run `npx prisma generate` and push updated code
 - [ ] 8.9 Verify app works on Vercel URL
 - [ ] 8.10 Share URL with friends, have each one create their profile
 

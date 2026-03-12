@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import VoiceButton from "@/components/VoiceButton";
+import { useState, useRef } from "react";
+import VoiceButton, { type VoiceButtonHandle } from "@/components/VoiceButton";
 import ConversationFeed, { type Message, type Correction } from "@/components/ConversationFeed";
 import MistakePanel from "@/components/MistakePanel";
 import TopicChips from "@/components/TopicChips";
@@ -26,6 +26,26 @@ export default function ConversationScreen({ profile }: Props) {
   const [sessionCorrections, setSessionCorrections] = useState<Correction[]>([]);
   const [showMistakePanel, setShowMistakePanel] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [callMode, setCallMode] = useState(false);
+
+  const voiceButtonRef = useRef<VoiceButtonHandle>(null);
+  const callModeRef = useRef(false); // ref so closures inside sendMessage always see current value
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  function setCallModeSync(val: boolean) {
+    callModeRef.current = val;
+    setCallMode(val);
+  }
+
+  function unlockAudio() {
+    if (!audioCtxRef.current) {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      audioCtxRef.current = new AudioCtx();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume();
+    }
+  }
 
   async function sendMessage(text: string) {
     if (!text.trim() || status !== "idle") return;
@@ -36,7 +56,6 @@ export default function ConversationScreen({ profile }: Props) {
     setStatus("thinking");
 
     try {
-      // 1. Get Claude's response
       const chatRes = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -54,7 +73,6 @@ export default function ConversationScreen({ profile }: Props) {
 
       if (!sessionId && chatData.sessionId) setSessionId(chatData.sessionId);
 
-      // Attach corrections to the user message that triggered them
       if (chatData.corrections?.length > 0) {
         setMessages((prev) => {
           const updated = [...prev];
@@ -71,7 +89,7 @@ export default function ConversationScreen({ profile }: Props) {
       const assistantMessage: Message = { role: "assistant", content: chatData.reply };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // 2. Play TTS audio
+      // Play TTS via AudioContext (bypasses autoplay restrictions)
       setStatus("speaking");
       const speakRes = await fetch("/api/speak", {
         method: "POST",
@@ -79,20 +97,27 @@ export default function ConversationScreen({ profile }: Props) {
         body: JSON.stringify({ text: chatData.reply }),
       });
 
-      if (speakRes.ok) {
-        const audioBlob = await speakRes.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        audio.onended = () => URL.revokeObjectURL(audioUrl);
-        audio.onerror = () => URL.revokeObjectURL(audioUrl);
-        try {
-          await audio.play();
-        } catch {
-          // autoplay blocked or unsupported — audio won't play but that's ok
-        }
-        setStatus("idle"); // unlock input as soon as audio starts (or fails)
-      } else {
+      function onAudioDone() {
         setStatus("idle");
+        if (callModeRef.current) {
+          setTimeout(() => voiceButtonRef.current?.startRecording(), 400);
+        }
+      }
+
+      if (speakRes.ok && audioCtxRef.current) {
+        try {
+          const arrayBuffer = await speakRes.arrayBuffer();
+          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+          const source = audioCtxRef.current.createBufferSource();
+          source.buffer = decoded;
+          source.connect(audioCtxRef.current.destination);
+          source.onended = onAudioDone;
+          source.start(0);
+        } catch {
+          onAudioDone();
+        }
+      } else {
+        onAudioDone();
       }
     } catch (err) {
       console.error("Pipeline error:", err);
@@ -102,12 +127,28 @@ export default function ConversationScreen({ profile }: Props) {
 
   function handleTextSubmit(e: React.FormEvent) {
     e.preventDefault();
+    unlockAudio();
     sendMessage(inputText);
   }
 
+  function startCall() {
+    unlockAudio();
+    setCallModeSync(true);
+    setTimeout(() => voiceButtonRef.current?.startRecording(), 150);
+  }
+
+  function endCall() {
+    setCallModeSync(false);
+    voiceButtonRef.current?.stopRecording();
+  }
+
+  const callStatusLabel =
+    status === "thinking" ? "Max denkt…" :
+    status === "speaking" ? "Max spricht…" :
+    "Zuhören…";
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden relative">
-      {/* Main feed — shrinks when mistake panel is open on desktop */}
       <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ${showMistakePanel ? "md:mr-72" : ""}`}>
         <ConversationFeed
           messages={messages}
@@ -119,13 +160,32 @@ export default function ConversationScreen({ profile }: Props) {
         <div className="border-t border-gray-800 bg-gray-950 px-4 pt-3 pb-4 shrink-0">
           <div className="max-w-2xl mx-auto flex flex-col items-center gap-3">
 
-            {/* Topic chips */}
-            <TopicChips onSelect={sendMessage} disabled={status !== "idle"} />
+            {/* Topic chips — hidden during active call */}
+            {!callMode && (
+              <TopicChips onSelect={sendMessage} disabled={status !== "idle"} />
+            )}
 
-            {/* Voice button + mistake panel toggle */}
+            {/* Call mode status bar */}
+            {callMode && (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className={`w-2 h-2 rounded-full ${status === "speaking" ? "bg-blue-400 animate-pulse" : status === "thinking" ? "bg-yellow-400 animate-pulse" : "bg-green-400 animate-pulse"}`} />
+                {callStatusLabel}
+              </div>
+            )}
+
+            {/* Voice button row */}
             <div className="flex items-center justify-center w-full gap-4">
               <div className="w-10" />
-              <VoiceButton onTranscript={sendMessage} disabled={status !== "idle"} />
+
+              <div onPointerDown={unlockAudio} onTouchStart={unlockAudio}>
+                <VoiceButton
+                  ref={voiceButtonRef}
+                  onTranscript={sendMessage}
+                  disabled={status !== "idle"}
+                  autoMode={callMode}
+                />
+              </div>
+
               {/* Mistake panel toggle */}
               <button
                 onClick={() => setShowMistakePanel((v) => !v)}
@@ -143,7 +203,33 @@ export default function ConversationScreen({ profile }: Props) {
               </button>
             </div>
 
-            {/* Text fallback */}
+            {/* Start / End Call button */}
+            {!callMode ? (
+              <button
+                onClick={startCall}
+                disabled={status !== "idle"}
+                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-full transition-colors"
+              >
+                {/* Phone icon */}
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+                </svg>
+                Gespräch starten
+              </button>
+            ) : (
+              <button
+                onClick={endCall}
+                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold text-sm rounded-full transition-colors"
+              >
+                {/* End call icon */}
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.69.28-.27 0-.52-.11-.7-.29L.29 13c-.18-.18-.29-.43-.29-.69 0-.27.11-.52.29-.7C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.61c.18.18.29.43.29.7 0 .26-.11.51-.29.69l-2.5 2.56c-.18.18-.43.29-.7.29-.26 0-.51-.1-.69-.28-.79-.73-1.68-1.36-2.66-1.85-.33-.16-.56-.51-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+                </svg>
+                Gespräch beenden
+              </button>
+            )}
+
+            {/* Text fallback — always visible */}
             <form onSubmit={handleTextSubmit} className="flex w-full gap-2">
               <input
                 type="text"
