@@ -40,20 +40,24 @@ export default function ConversationScreen({ profile }: Props) {
     setCallMode(val);
   }
 
-  // Must be called synchronously inside a user gesture to unlock audio
+  // Must be called synchronously inside a user gesture to unlock audio.
+  // Plays a silent 1-sample buffer — the standard technique to unlock AudioContext on all browsers.
   function unlockAudio() {
+    const AudioCtx = window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!audioCtxRef.current) {
-      const AudioCtx = window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audioCtxRef.current = new AudioCtx();
     }
-    if (audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume();
+    const ctx = audioCtxRef.current;
+    if (ctx.state === "suspended") {
+      ctx.resume();
     }
-    // Also trigger the DOM audio element (ensures it's "user-activated")
-    if (audioElRef.current) {
-      audioElRef.current.play().catch(() => {});
-    }
+    // Play a real (silent) buffer — this is what actually unlocks the context on iOS Safari
+    const silentBuffer = ctx.createBuffer(1, 1, 22050);
+    const silentSource = ctx.createBufferSource();
+    silentSource.buffer = silentBuffer;
+    silentSource.connect(ctx.destination);
+    silentSource.start(0);
   }
 
   // Play TTS audio. Tries AudioContext first (bypasses autoplay), falls back to DOM audio element.
