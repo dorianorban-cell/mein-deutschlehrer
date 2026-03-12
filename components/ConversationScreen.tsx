@@ -32,74 +32,21 @@ export default function ConversationScreen({ profile }: Props) {
   const voiceButtonRef = useRef<VoiceButtonHandle>(null);
   const callModeRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  // Persistent DOM audio element — more reliable than new Audio() for autoplay
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   function setCallModeSync(val: boolean) {
     callModeRef.current = val;
     setCallMode(val);
   }
 
-  // Must be called synchronously inside a user gesture to unlock audio.
-  // Plays a silent 1-sample buffer — the standard technique to unlock AudioContext on all browsers.
+  // Call synchronously inside a user gesture to unlock AudioContext
   function unlockAudio() {
-    const AudioCtx = window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!audioCtxRef.current) {
+      const AudioCtx = window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audioCtxRef.current = new AudioCtx();
     }
-    const ctx = audioCtxRef.current;
-    if (ctx.state === "suspended") {
-      ctx.resume();
-    }
-    // Play a real (silent) buffer — this is what actually unlocks the context on iOS Safari
-    const silentBuffer = ctx.createBuffer(1, 1, 22050);
-    const silentSource = ctx.createBufferSource();
-    silentSource.buffer = silentBuffer;
-    silentSource.connect(ctx.destination);
-    silentSource.start(0);
-  }
-
-  // Play TTS audio. Tries AudioContext first (bypasses autoplay), falls back to DOM audio element.
-  function playTTS(arrayBuffer: ArrayBuffer): Promise<void> {
-    return new Promise((resolve) => {
-      const done = () => resolve();
-      const bufCopy = arrayBuffer.slice(0); // preserve for fallback (decodeAudioData detaches)
-
-      if (audioCtxRef.current) {
-        const ctx = audioCtxRef.current;
-        Promise.resolve(ctx.state === "suspended" ? ctx.resume() : undefined)
-          .then(() => ctx.decodeAudioData(arrayBuffer))
-          .then((decoded) => {
-            const source = ctx.createBufferSource();
-            source.buffer = decoded;
-            source.connect(ctx.destination);
-            source.onended = done;
-            source.start(0);
-          })
-          .catch((e) => { console.error("decodeAudioData failed:", e); playViaElement(bufCopy, done); });
-      } else {
-        playViaElement(bufCopy, done);
-      }
-    });
-  }
-
-  function playViaElement(arrayBuffer: ArrayBuffer, done: () => void) {
-    const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
-    const url = URL.createObjectURL(blob);
-    const finish = () => { URL.revokeObjectURL(url); done(); };
-    const el = audioElRef.current;
-    if (el) {
-      el.onended = finish;
-      el.onerror = finish;
-      el.src = url;
-      el.load();
-      el.play().catch((e) => { console.error("el.play() failed:", e); finish(); });
-    } else {
-      const audio = new Audio(url);
-      audio.onended = finish;
-      audio.onerror = finish;
-      audio.play().catch((e) => { console.error("audio.play() failed:", e); finish(); });
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume();
     }
   }
 
@@ -144,7 +91,6 @@ export default function ConversationScreen({ profile }: Props) {
 
       setMessages((prev) => [...prev, { role: "assistant", content: chatData.reply }]);
 
-      // Fetch and play TTS
       setStatus("speaking");
       const speakRes = await fetch("/api/speak", {
         method: "POST",
@@ -152,20 +98,35 @@ export default function ConversationScreen({ profile }: Props) {
         body: JSON.stringify({ text: chatData.reply }),
       });
 
-      if (speakRes.ok) {
-        const arrayBuffer = await speakRes.arrayBuffer();
-        console.log("speak ok, buffer bytes:", arrayBuffer.byteLength, "audioCtx:", audioCtxRef.current?.state ?? "null");
-        await playTTS(arrayBuffer);
-      } else {
-        const errText = await speakRes.text().catch(() => speakRes.status.toString());
-        console.error("speak failed:", speakRes.status, errText);
-        setAudioError(`Speak API error ${speakRes.status}: ${errText.slice(0, 80)}`);
+      function onAudioDone() {
+        setStatus("idle");
+        if (callModeRef.current) {
+          setTimeout(() => voiceButtonRef.current?.startRecording(), 400);
+        }
       }
 
-      // After audio finishes (or if speak failed), go idle and auto-listen in call mode
-      setStatus("idle");
-      if (callModeRef.current) {
-        setTimeout(() => voiceButtonRef.current?.startRecording(), 400);
+      if (speakRes.ok && audioCtxRef.current) {
+        try {
+          const arrayBuffer = await speakRes.arrayBuffer();
+          console.log("speak ok, bytes:", arrayBuffer.byteLength, "ctx:", audioCtxRef.current.state);
+          if (audioCtxRef.current.state === "suspended") {
+            await audioCtxRef.current.resume();
+          }
+          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+          const source = audioCtxRef.current.createBufferSource();
+          source.buffer = decoded;
+          source.connect(audioCtxRef.current.destination);
+          source.onended = onAudioDone;
+          source.start(0);
+        } catch (e) {
+          console.error("Audio playback failed:", e);
+          setAudioError(`Audio error: ${String(e).slice(0, 100)}`);
+          onAudioDone();
+        }
+      } else {
+        console.error("speak failed or no audioCtx:", speakRes.status, !!audioCtxRef.current);
+        setAudioError(`Speak ${speakRes.status} / ctx: ${!!audioCtxRef.current}`);
+        onAudioDone();
       }
     } catch (err) {
       console.error("Pipeline error:", err);
@@ -197,26 +158,23 @@ export default function ConversationScreen({ profile }: Props) {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden relative">
-      {/* Hidden persistent audio element for reliable playback */}
-      <audio ref={audioElRef} style={{ display: "none" }} />
-
-      {/* Audio error banner — helps diagnose TTS issues */}
-      {audioError && (
-        <div className="bg-red-900/80 border border-red-700 text-red-200 text-xs px-3 py-2 mx-4 mt-2 rounded-lg flex justify-between items-center">
-          <span>🔇 {audioError}</span>
-          <button onClick={() => setAudioError(null)} className="ml-2 text-red-400 hover:text-white">✕</button>
-        </div>
-      )}
-
       <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ${showMistakePanel ? "md:mr-72" : ""}`}>
         <ConversationFeed messages={messages} status={status} profileName={profile.name} />
+
+        {/* Audio error banner */}
+        {audioError && (
+          <div className="bg-red-900/80 border border-red-700 text-red-200 text-xs px-3 py-2 mx-4 mt-2 rounded-lg flex justify-between items-center shrink-0">
+            <span>🔇 {audioError}</span>
+            <button onClick={() => setAudioError(null)} className="ml-2 text-red-400 hover:text-white">✕</button>
+          </div>
+        )}
 
         {/* Input area */}
         <div className="border-t border-gray-800 bg-gray-950 px-4 pt-3 pb-4 shrink-0">
           <div className="max-w-2xl mx-auto flex flex-col items-center gap-3">
 
             {!callMode && (
-              <TopicChips onSelect={(t) => { unlockAudio(); sendMessage(t); }} disabled={status !== "idle"} />
+              <TopicChips onSelect={sendMessage} disabled={status !== "idle"} />
             )}
 
             {callMode && (
@@ -230,7 +188,6 @@ export default function ConversationScreen({ profile }: Props) {
               </div>
             )}
 
-            {/* Voice button row */}
             <div className="flex items-center justify-center w-full gap-4">
               <div className="w-10" />
 
@@ -259,7 +216,6 @@ export default function ConversationScreen({ profile }: Props) {
               </button>
             </div>
 
-            {/* Start / End Call */}
             {!callMode ? (
               <button
                 onClick={startCall}
@@ -283,7 +239,6 @@ export default function ConversationScreen({ profile }: Props) {
               </button>
             )}
 
-            {/* Text fallback */}
             <form onSubmit={handleTextSubmit} className="flex w-full gap-2">
               <input
                 type="text"
