@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import VoiceButton, { type VoiceButtonHandle } from "@/components/VoiceButton";
 import ConversationFeed, { type Message, type Correction } from "@/components/ConversationFeed";
 import MistakePanel from "@/components/MistakePanel";
@@ -79,21 +79,33 @@ export default function ConversationScreen({ profile }: Props) {
   const sessionStartRef = useRef<number | null>(null);
   const autoListenRef = useRef(false);
 
+  // Create AudioContext on mount so it always exists before first playback
+  useEffect(() => {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (AudioCtx) audioCtxRef.current = new AudioCtx();
+  }, []);
+
   function syncAutoListen(val: boolean) {
     autoListenRef.current = val;
     setAutoListenMode(val);
   }
 
+  // Must be called from a user-gesture handler.
+  // Playing a silent 1-sample buffer is the only reliable way to unlock
+  // AudioContext on iOS Safari — resume() alone is not enough.
   function unlockAudio() {
-    if (!audioCtxRef.current) {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      audioCtxRef.current = new AudioCtx();
-    }
-    if (audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume();
-    }
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume();
+    try {
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch (_) { /* ignore */ }
   }
 
   async function playAudioBuffer(arrayBuffer: ArrayBuffer): Promise<void> {
@@ -108,13 +120,11 @@ export default function ConversationScreen({ profile }: Props) {
       }
 
       const ctx = audioCtxRef.current;
-      if (!ctx) {
-        fallbackAudioElement();
-        return;
-      }
+      if (!ctx) { fallbackAudioElement(); return; }
 
       const tryWebAudio = async () => {
-        if (ctx.state === "suspended") await ctx.resume();
+        // resume is safe to call even when already running
+        if (ctx.state !== "running") await ctx.resume();
         const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
         const source = ctx.createBufferSource();
         source.buffer = decoded;
@@ -286,9 +296,6 @@ export default function ConversationScreen({ profile }: Props) {
           {/* Center: mic or keyboard input */}
           {!keyboardMode ? (
             <div className="relative flex flex-col items-center">
-              {autoListenMode && (
-                <span className="absolute inset-[-6px] rounded-full border-2 border-forest animate-ping opacity-25 pointer-events-none" />
-              )}
               <VoiceButton
                 ref={voiceButtonRef}
                 onTranscript={sendMessage}
