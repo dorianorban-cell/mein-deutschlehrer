@@ -33,12 +33,6 @@ function categoryLabel(cat: string) {
   return CATEGORY_LABELS[cat] ?? cat;
 }
 
-function borderColor(count: number) {
-  if (count >= 3) return "border-red-700";
-  if (count === 2) return "border-yellow-600";
-  return "border-gray-700";
-}
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", {
     day: "numeric",
@@ -61,20 +55,15 @@ function dayKey(iso: string) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-// ── By Category ──────────────────────────────────────────────
 function CategoryView({ mistakes }: { mistakes: Mistake[] }) {
-  if (mistakes.length === 0) {
-    return <EmptyState />;
-  }
+  if (mistakes.length === 0) return <EmptyState />;
 
-  // Group by category
   const groups: Record<string, Mistake[]> = {};
   for (const m of mistakes) {
     const cat = m.category || "other";
     (groups[cat] ??= []).push(m);
   }
 
-  // Sort groups by sum of counts desc
   const sortedGroups = Object.entries(groups).sort(
     (a, b) =>
       b[1].reduce((s, m) => s + m.count, 0) -
@@ -86,11 +75,11 @@ function CategoryView({ mistakes }: { mistakes: Mistake[] }) {
       {sortedGroups.map(([cat, items]) => (
         <section key={cat}>
           <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
-              {categoryLabel(cat)}
+            <h3 className="font-jetbrains text-xs font-semibold text-forest uppercase tracking-widest">
+              {categoryLabel(cat).toUpperCase()}
             </h3>
-            <span className="text-xs text-gray-500">
-              {items.reduce((s, m) => s + m.count, 0)} Vorkommen
+            <span className="font-jetbrains text-xs text-muted-brown">
+              · {items.reduce((s, m) => s + m.count, 0)} Vorkommen
             </span>
           </div>
           <div className="space-y-2">
@@ -104,13 +93,9 @@ function CategoryView({ mistakes }: { mistakes: Mistake[] }) {
   );
 }
 
-// ── By Date ──────────────────────────────────────────────────
 function DateView({ mistakes }: { mistakes: Mistake[] }) {
-  if (mistakes.length === 0) {
-    return <EmptyState />;
-  }
+  if (mistakes.length === 0) return <EmptyState />;
 
-  // Group by lastSeen day, reverse-chrono
   const groups: Record<string, Mistake[]> = {};
   for (const m of mistakes) {
     const key = dayKey(m.lastSeen);
@@ -127,7 +112,7 @@ function DateView({ mistakes }: { mistakes: Mistake[] }) {
     <div className="space-y-8">
       {sortedDays.map(([, items]) => (
         <section key={dayKey(items[0].lastSeen)}>
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">
+          <h3 className="font-jetbrains text-xs font-semibold text-muted-brown uppercase tracking-widest mb-3">
             {formatDayHeading(items[0].lastSeen)}
           </h3>
           <div className="space-y-2">
@@ -141,40 +126,37 @@ function DateView({ mistakes }: { mistakes: Mistake[] }) {
   );
 }
 
-// ── Shared mistake card ───────────────────────────────────────
 function MistakeCard({ mistake: m, showBadge }: { mistake: Mistake; showBadge: boolean }) {
   return (
-    <div
-      className={`bg-gray-900 rounded-xl p-4 border-l-4 ${borderColor(m.count)} space-y-2`}
-    >
+    <div className="bg-cream border border-border-warm rounded-lg p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1 font-mono text-sm min-w-0">
-          <p className="text-red-400 line-through leading-snug truncate">
+        <div className="space-y-1 min-w-0">
+          <p className="font-jetbrains text-sm text-correction-red line-through leading-snug truncate">
             {m.original}
           </p>
-          <p className="text-green-400 leading-snug truncate">{m.corrected}</p>
+          <p className="font-jetbrains text-sm text-forest font-semibold leading-snug truncate">
+            {m.corrected}
+          </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {showBadge && (
-            <span className="text-xs">
-              {m.count > 1 ? "⚠️" : "🆕"}
-            </span>
+            <span className="text-xs">{m.count > 1 ? "⚠️" : "🆕"}</span>
           )}
           <span
-            className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+            className={`font-jetbrains text-xs font-bold px-2 py-0.5 rounded-full ${
               m.count >= 3
-                ? "bg-red-900 text-red-300"
+                ? "bg-red-100 text-correction-red"
                 : m.count === 2
-                ? "bg-yellow-900 text-yellow-300"
-                : "bg-gray-800 text-gray-400"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-border-warm text-muted-brown"
             }`}
           >
             {m.count}×
           </span>
         </div>
       </div>
-      <p className="text-xs text-gray-500 leading-snug">💡 {m.rule}</p>
-      <p className="text-xs text-gray-600">
+      <p className="font-source-serif text-xs text-muted-brown leading-snug">💡 {m.rule}</p>
+      <p className="font-jetbrains text-[10px] text-muted-brown/70">
         📅 Zuerst: {formatDate(m.firstSeen)} · Zuletzt: {formatDate(m.lastSeen)}
       </p>
     </div>
@@ -185,12 +167,13 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
       <p className="text-3xl">✅</p>
-      <p className="text-gray-500 text-sm">Noch keine Fehler aufgezeichnet.</p>
+      <p className="font-source-serif italic text-muted-brown text-sm">
+        Noch keine Fehler aufgezeichnet.
+      </p>
     </div>
   );
 }
 
-// ── Main export ───────────────────────────────────────────────
 export default function ReportView({
   mistakes,
   totalOccurrences,
@@ -235,40 +218,41 @@ export default function ReportView({
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
-      {/* Tab bar + copy button */}
-      <div className="flex items-center justify-between mb-6 gap-4">
-        <div className="flex gap-1 bg-gray-900 rounded-xl p-1">
-          {(["category", "date"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab
-                  ? "bg-white text-gray-950"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              {tab === "category" ? "Nach Kategorie" : "Nach Datum"}
-            </button>
-          ))}
+    <div className="flex-1 overflow-y-auto scrollbar-none">
+      <div className="max-w-2xl mx-auto px-4 py-5">
+        {/* Tab pills + copy */}
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <div className="flex gap-1 bg-border-warm/40 rounded-full p-1">
+            {(["category", "date"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`font-jetbrains px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-colors ${
+                  activeTab === tab
+                    ? "bg-forest text-cream"
+                    : "text-muted-brown hover:text-forest"
+                }`}
+              >
+                {tab === "category" ? "Nach Kategorie" : "Nach Datum"}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 font-jetbrains text-xs px-3 py-2 rounded-lg border border-border-warm text-muted-brown hover:text-forest hover:border-forest transition-colors"
+          >
+            <span>{copied ? "✅" : "📋"}</span>
+            <span>{copied ? "Kopiert!" : "Kopieren"}</span>
+          </button>
         </div>
 
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
-        >
-          <span>{copied ? "✅" : "📋"}</span>
-          <span>{copied ? "Kopiert!" : "Kopieren"}</span>
-        </button>
+        {activeTab === "category" ? (
+          <CategoryView mistakes={mistakes} />
+        ) : (
+          <DateView mistakes={mistakes} />
+        )}
       </div>
-
-      {/* Tab content */}
-      {activeTab === "category" ? (
-        <CategoryView mistakes={mistakes} />
-      ) : (
-        <DateView mistakes={mistakes} />
-      )}
     </div>
   );
 }

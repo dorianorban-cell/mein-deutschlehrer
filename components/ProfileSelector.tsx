@@ -55,25 +55,25 @@ export default function ProfileSelector() {
             <button
               key={profile.id}
               onClick={() => router.push(`/${profile.id}`)}
-              className="group relative flex flex-col rounded-2xl overflow-hidden border border-white/10 hover:border-neon/40 transition-all duration-200 aspect-square bg-white/5 hover:bg-white/8"
+              className="group relative flex flex-col rounded-2xl overflow-hidden border border-border-warm hover:border-forest bg-cream hover:shadow-md transition-all duration-200 aspect-square"
             >
               {/* Level badge */}
-              <span className="absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-app-bg/80 text-neon border border-neon/30 z-10">
+              <span className="absolute top-2.5 right-2.5 font-jetbrains text-[10px] font-bold px-2 py-0.5 rounded-full bg-forest text-gold z-10">
                 {profile.level}
               </span>
 
-              {/* Avatar placeholder */}
+              {/* Avatar */}
               <div className="flex-1 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white/40" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-                  </svg>
+                <div className="w-16 h-16 rounded-full bg-forest flex items-center justify-center">
+                  <span className="font-playfair font-bold text-2xl text-gold leading-none">
+                    {profile.name.charAt(0).toUpperCase()}
+                  </span>
                 </div>
               </div>
 
               {/* Name */}
               <div className="pb-3 text-center">
-                <span className="text-white font-semibold text-sm">{profile.name}</span>
+                <span className="font-source-serif font-semibold text-sm text-forest">{profile.name}</span>
               </div>
             </button>
           ))}
@@ -82,12 +82,12 @@ export default function ProfileSelector() {
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="flex flex-col items-center justify-center rounded-2xl aspect-square border-2 border-dashed border-white/15 hover:border-neon/40 text-white/30 hover:text-neon/70 transition-all duration-200"
+              className="flex flex-col items-center justify-center rounded-2xl aspect-square border-2 border-dashed border-border-warm hover:border-forest text-muted-brown hover:text-forest transition-all duration-200"
             >
-              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-2">
+              <div className="w-12 h-12 rounded-full bg-border-warm/40 flex items-center justify-center mb-2">
                 <span className="text-2xl leading-none font-light">+</span>
               </div>
-              <span className="text-xs font-medium tracking-wide">Neues Profil</span>
+              <span className="font-jetbrains text-xs tracking-wide">Neues Profil</span>
             </button>
           )}
         </div>
@@ -97,19 +97,19 @@ export default function ProfileSelector() {
       {profiles.length === 0 && !showForm && (
         <button
           onClick={() => setShowForm(true)}
-          className="flex flex-col items-center justify-center rounded-2xl w-36 h-36 border-2 border-dashed border-white/15 hover:border-neon/40 text-white/30 hover:text-neon/70 transition-all duration-200"
+          className="flex flex-col items-center justify-center rounded-2xl w-36 h-36 border-2 border-dashed border-border-warm hover:border-forest text-muted-brown hover:text-forest transition-all duration-200"
         >
-          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-2">
+          <div className="w-12 h-12 rounded-full bg-border-warm/40 flex items-center justify-center mb-2">
             <span className="text-2xl leading-none font-light">+</span>
           </div>
-          <span className="text-xs font-medium tracking-wide">Neues Profil</span>
+          <span className="font-jetbrains text-xs tracking-wide">Neues Profil</span>
         </button>
       )}
 
       {/* Create profile form */}
       {showForm && (
-        <div className="w-full bg-card-bg border border-neon/15 rounded-2xl p-5 flex flex-col gap-4">
-          <h3 className="text-sm font-semibold text-white tracking-wide">Neues Profil</h3>
+        <div className="w-full bg-cream border border-border-warm rounded-2xl p-5 flex flex-col gap-4">
+          <h3 className="font-playfair font-bold text-forest text-lg">Neues Profil</h3>
 
           <form onSubmit={handleCreate} className="flex flex-col gap-3">
             <input
@@ -119,16 +119,16 @@ export default function ProfileSelector() {
               placeholder="Dein Name"
               required
               autoFocus
-              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-neon/40 focus:ring-1 focus:ring-neon/20 transition-colors"
+              className="bg-parchment border border-border-warm rounded-xl px-4 py-2.5 text-sm text-forest placeholder-muted-brown focus:outline-none focus:border-forest transition-colors font-source-serif"
             />
 
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-neon/40 focus:ring-1 focus:ring-neon/20 transition-colors"
+              className="bg-parchment border border-border-warm rounded-xl px-4 py-2.5 text-sm text-forest focus:outline-none focus:border-forest transition-colors font-jetbrains"
             >
               {LEVELS.map((l) => (
-                <option key={l} value={l} className="bg-gray-900">
+                <option key={l} value={l}>
                   {l}
                 </option>
               ))}
@@ -138,27 +138,20 @@ export default function ProfileSelector() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-neon text-app-bg font-semibold text-sm rounded-xl px-4 py-2.5 hover:brightness-110 disabled:opacity-50 transition-all neon-glow-sm"
+                className="flex-1 bg-forest text-cream font-jetbrains font-semibold text-sm rounded-xl px-4 py-2.5 hover:brightness-110 disabled:opacity-50 transition-all"
               >
                 {loading ? "Erstelle…" : "Erstellen"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2.5 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors text-sm"
+                className="px-4 py-2.5 rounded-xl text-muted-brown hover:text-forest hover:bg-border-warm/40 transition-colors font-jetbrains text-sm"
               >
                 Abbrechen
               </button>
             </div>
           </form>
         </div>
-      )}
-
-      {/* Manage profiles button */}
-      {profiles.length > 0 && (
-        <button className="mt-1 px-6 py-2.5 rounded-full border border-white/15 text-white/50 hover:border-white/30 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors">
-          Profile verwalten
-        </button>
       )}
     </div>
   );

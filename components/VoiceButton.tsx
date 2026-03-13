@@ -140,58 +140,51 @@ const VoiceButton = forwardRef<VoiceButtonHandle, Props>(
           onTouchEnd: (e: React.TouchEvent) => { e.preventDefault(); stopRecording(); },
         };
 
+    const label =
+      btnState === "recording"
+        ? "Zuhören…"
+        : btnState === "processing"
+        ? "Wird verarbeitet…"
+        : "Drücken zum Sprechen";
+
     return (
       <div className="flex flex-col items-center gap-2">
         <button
           {...clickHandlers}
           disabled={isDisabled}
-          aria-label={
-            btnState === "recording"
-              ? "Aufnahme läuft – zum Stoppen tippen"
-              : btnState === "processing"
-              ? "Wird verarbeitet…"
-              : autoMode
-              ? "Zum Sprechen tippen"
-              : "Zum Sprechen gedrückt halten"
-          }
+          aria-label={label}
           className={`
             relative w-20 h-20 rounded-full flex items-center justify-center
             transition-all duration-200 select-none touch-none
             ${isDisabled && btnState !== "recording"
-              ? "opacity-40 cursor-not-allowed bg-neon/20 border-2 border-neon/20"
+              ? "opacity-40 cursor-not-allowed bg-forest/20 border-2 border-forest/20"
               : btnState === "recording"
-              ? "bg-neon scale-110 neon-glow border-2 border-neon"
-              : "bg-neon neon-glow hover:brightness-110 active:scale-95 border-2 border-neon cursor-pointer"
+              ? "bg-correction-red scale-110 border-2 border-correction-red shadow-lg"
+              : "bg-forest border-2 border-forest shadow-md hover:brightness-110 active:scale-95 cursor-pointer"
             }
           `}
         >
           {btnState === "processing" ? (
-            <svg className="w-7 h-7 text-app-bg animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg className="w-7 h-7 text-cream animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
           ) : btnState === "recording" ? (
             <>
-              <span className="absolute inset-0 rounded-full bg-neon animate-ping opacity-25" />
-              <svg className="w-8 h-8 text-app-bg relative z-10" fill="currentColor" viewBox="0 0 24 24">
+              <span className="absolute inset-0 rounded-full bg-correction-red animate-ping opacity-20" />
+              <svg className="w-8 h-8 text-cream relative z-10" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
               </svg>
             </>
           ) : (
-            <svg className="w-8 h-8 text-app-bg" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-cream" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 1a4 4 0 014 4v7a4 4 0 01-8 0V5a4 4 0 014-4zm0 2a2 2 0 00-2 2v7a2 2 0 004 0V5a2 2 0 00-2-2zm-7 9a7 7 0 0014 0h2a9 9 0 01-8 8.94V22h2v2H9v-2h2v-1.06A9 9 0 013 12h2z" />
             </svg>
           )}
         </button>
 
-        <p className="text-xs text-white/30 select-none">
-          {btnState === "recording"
-            ? "Tap to stop speaking"
-            : btnState === "processing"
-            ? "Wird transkribiert…"
-            : autoMode
-            ? "Tippen zum Sprechen"
-            : "Gedrückt halten"}
+        <p className="font-jetbrains text-xs text-muted-brown select-none tracking-wide">
+          {label}
         </p>
       </div>
     );

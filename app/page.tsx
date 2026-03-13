@@ -2,15 +2,18 @@ import ProfileSelector from "@/components/ProfileSelector";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-app-bg flex flex-col items-center justify-center py-16 px-4">
+    <main className="min-h-screen bg-parchment flex flex-col items-center justify-center py-16 px-4">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
 
         {/* Title */}
-        <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-4xl font-bold text-white tracking-tight">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="w-14 h-14 rounded-full bg-forest flex items-center justify-center mb-2">
+            <span className="font-playfair font-bold text-2xl text-gold leading-none">M</span>
+          </div>
+          <h1 className="font-playfair font-bold text-3xl text-forest tracking-tight">
             Wer bist du?
           </h1>
-          <p className="text-xs font-semibold text-neon tracking-[0.22em] uppercase">
+          <p className="font-jetbrains text-[10px] text-muted-brown tracking-[0.22em] uppercase">
             Wähle dein Profil
           </p>
         </div>
@@ -18,7 +21,7 @@ export default function Home() {
         <ProfileSelector />
 
         {/* Footer */}
-        <p className="text-[11px] text-green-900 tracking-widest uppercase flex items-center gap-1.5">
+        <p className="font-jetbrains text-[10px] text-muted-brown tracking-widest uppercase flex items-center gap-1.5">
           <span>🌐</span>
           <span>Deutsch lernen mit Zukunft</span>
         </p>

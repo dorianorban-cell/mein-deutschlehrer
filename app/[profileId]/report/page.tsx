@@ -1,19 +1,13 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import ReportView from "@/components/ReportView";
+import BottomNav from "@/components/BottomNav";
+import Link from "next/link";
 
 interface Props {
   params: Promise<{ profileId: string }>;
 }
 
-const LEVEL_COLORS: Record<string, string> = {
-  A1: "bg-emerald-900 text-emerald-300",
-  A2: "bg-teal-900 text-teal-300",
-  B1: "bg-blue-900 text-blue-300",
-  B2: "bg-violet-900 text-violet-300",
-  C1: "bg-rose-900 text-rose-300",
-};
 
 export default async function ReportPage({ params }: Props) {
   const { profileId } = await params;
@@ -41,7 +35,6 @@ export default async function ReportPage({ params }: Props) {
     year: "numeric",
   });
 
-  // Serialise DateTime fields to strings for client component
   const serialisedMistakes = mistakes.map((m) => ({
     ...m,
     firstSeen: m.firstSeen.toISOString(),
@@ -49,39 +42,41 @@ export default async function ReportPage({ params }: Props) {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <div className="flex flex-col h-screen bg-parchment">
       {/* Header */}
-      <header className="border-b border-gray-800 px-4 py-4">
-        <div className="max-w-2xl mx-auto space-y-1">
+      <header className="shrink-0 bg-cream border-b border-border-warm px-4 py-4">
+        <div className="max-w-2xl mx-auto">
           {/* Nav row */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <Link
               href={`/${profileId}`}
-              className="text-sm text-gray-500 hover:text-white transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-brown hover:text-forest hover:bg-border-warm/40 transition-colors"
             >
-              ← Gespräch
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
             </Link>
+
+            <h1 className="font-playfair font-bold text-forest text-xl absolute left-1/2 -translate-x-1/2">
+              Fehler-Bericht
+            </h1>
+
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-white">{profile.name}</span>
-              <span
-                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  LEVEL_COLORS[profile.level] ?? "bg-gray-800 text-gray-400"
-                }`}
-              >
+              <span className="font-source-serif text-sm text-forest font-semibold">{profile.name}</span>
+              <span className="font-jetbrains text-xs font-bold bg-forest text-gold px-2 py-0.5 rounded-full">
                 {profile.level}
               </span>
             </div>
           </div>
 
-          {/* Meta rows */}
-          <p className="text-xs text-gray-500">Generiert: {generatedDate}</p>
-          <p className="text-xs text-gray-500">
-            Tracking seit: {trackingSince} · {totalOccurrences} Fehler aufgezeichnet
+          {/* Meta */}
+          <p className="font-jetbrains text-[10px] text-muted-brown text-center">
+            Generiert: {generatedDate} · {totalOccurrences} Fehler aufgezeichnet
           </p>
         </div>
       </header>
 
-      {/* Report content */}
+      {/* Report content — scrollable */}
       <ReportView
         mistakes={serialisedMistakes}
         totalOccurrences={totalOccurrences}
@@ -89,6 +84,8 @@ export default async function ReportPage({ params }: Props) {
         generatedDate={generatedDate}
         trackingSince={trackingSince}
       />
+
+      <BottomNav profileId={profileId} active="report" />
     </div>
   );
 }
