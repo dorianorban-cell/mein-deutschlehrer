@@ -35,57 +35,54 @@ function MaxIllustration({ speaking }: { speaking: boolean }) {
       {/* Shadow */}
       <ellipse cx="50" cy="115" rx="22" ry="5" fill="#C8A96E" opacity="0.25" />
 
-      {/* Body / jacket */}
-      <rect x="28" y="72" width="44" height="40" rx="8" fill="#1A3A2A" />
-
-      {/* Shirt collar / tie area */}
-      <rect x="44" y="72" width="12" height="20" rx="2" fill="#F5F0E8" />
-      {/* Tie */}
-      <polygon points="50,76 46,86 50,90 54,86" fill="#C8A96E" />
-
-      {/* Lapels */}
-      <polygon points="44,72 36,80 44,80" fill="#2a5240" />
-      <polygon points="56,72 64,80 56,80" fill="#2a5240" />
+      {/* Body — casual hoodie */}
+      <rect x="26" y="72" width="48" height="42" rx="12" fill="#2D5A3D" />
+      {/* Hoodie kangaroo pocket */}
+      <rect x="36" y="88" width="28" height="14" rx="6" fill="#1A3A2A" opacity="0.5" />
+      {/* Hoodie drawstrings */}
+      <line x1="45" y1="74" x2="43" y2="87" stroke="#1A3A2A" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round" />
+      <line x1="55" y1="74" x2="57" y2="87" stroke="#1A3A2A" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round" />
 
       {/* Neck */}
-      <rect x="44" y="62" width="12" height="14" rx="4" fill="#d4a574" />
+      <rect x="44" y="62" width="12" height="14" rx="5" fill="#d4a574" />
 
       {/* Head */}
-      <ellipse cx="50" cy="48" rx="22" ry="24" fill="#d4a574" />
+      <ellipse cx="50" cy="47" rx="22" ry="24" fill="#d4a574" />
 
-      {/* Hair */}
-      <ellipse cx="50" cy="26" rx="21" ry="10" fill="#3d2b1f" />
-      <rect x="29" y="26" width="42" height="8" rx="0" fill="#3d2b1f" />
-      {/* Side hair */}
-      <rect x="28" y="30" width="6" height="16" rx="3" fill="#3d2b1f" />
-      <rect x="66" y="30" width="6" height="16" rx="3" fill="#3d2b1f" />
+      {/* Bold hair — sandy/dirty-blonde, lots of volume */}
+      <ellipse cx="50" cy="24" rx="24" ry="13" fill="#9B6E3A" />
+      <rect x="26" y="24" width="48" height="10" fill="#9B6E3A" />
+      {/* Full side hair */}
+      <rect x="25" y="28" width="8" height="20" rx="5" fill="#9B6E3A" />
+      <rect x="67" y="28" width="8" height="20" rx="5" fill="#9B6E3A" />
+      {/* Hair volume highlights */}
+      <ellipse cx="40" cy="21" rx="9" ry="6" fill="#B8854A" opacity="0.55" />
+      <ellipse cx="62" cy="20" rx="8" ry="5" fill="#B8854A" opacity="0.45" />
 
       {/* Ears */}
-      <ellipse cx="28" cy="50" rx="4" ry="5" fill="#c89a6a" />
-      <ellipse cx="72" cy="50" rx="4" ry="5" fill="#c89a6a" />
+      <ellipse cx="28" cy="49" rx="4" ry="5" fill="#c89a6a" />
+      <ellipse cx="72" cy="49" rx="4" ry="5" fill="#c89a6a" />
 
-      {/* Eyes — glasses frames */}
-      <rect x="32" y="44" width="14" height="10" rx="4" fill="none" stroke="#1A3A2A" strokeWidth="2" />
-      <rect x="54" y="44" width="14" height="10" rx="4" fill="none" stroke="#1A3A2A" strokeWidth="2" />
-      {/* Bridge */}
-      <line x1="46" y1="49" x2="54" y2="49" stroke="#1A3A2A" strokeWidth="2" />
-      {/* Temple arms */}
-      <line x1="32" y1="49" x2="28" y2="47" stroke="#1A3A2A" strokeWidth="2" />
-      <line x1="68" y1="49" x2="72" y2="47" stroke="#1A3A2A" strokeWidth="2" />
+      {/* Eyebrows — natural, slightly thick */}
+      <path d="M34 42 Q39 40 44 41" fill="none" stroke="#7A4E28" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M56 41 Q61 40 66 42" fill="none" stroke="#7A4E28" strokeWidth="2.2" strokeLinecap="round" />
 
-      {/* Pupils */}
-      <circle cx="39" cy="49" r="3" fill="#1A3A2A" />
-      <circle cx="61" cy="49" r="3" fill="#1A3A2A" />
+      {/* Eyes — no glasses, open friendly */}
+      <ellipse cx="39" cy="48" rx="4.5" ry="3.5" fill="#1A3A2A" />
+      <ellipse cx="61" cy="48" rx="4.5" ry="3.5" fill="#1A3A2A" />
       {/* Eye shine */}
-      <circle cx="40.5" cy="47.5" r="1" fill="white" />
-      <circle cx="62.5" cy="47.5" r="1" fill="white" />
+      <circle cx="41" cy="46.5" r="1.3" fill="white" />
+      <circle cx="63" cy="46.5" r="1.3" fill="white" />
 
-      {/* Smile */}
-      <path d="M42 58 Q50 64 58 58" fill="none" stroke="#8B5E3C" strokeWidth="2" strokeLinecap="round" />
+      {/* Relaxed smile */}
+      <path d="M43 58 Q50 64 57 58" fill="none" stroke="#8B5E3C" strokeWidth="2" strokeLinecap="round" />
 
-      {/* Arms */}
-      <rect x="14" y="74" width="16" height="8" rx="4" fill="#1A3A2A" />
-      <rect x="70" y="74" width="16" height="8" rx="4" fill="#1A3A2A" />
+      {/* Light chin stubble */}
+      <ellipse cx="50" cy="62" rx="7" ry="2.5" fill="#c09070" opacity="0.25" />
+
+      {/* Arms — hoodie sleeves */}
+      <rect x="12" y="74" width="16" height="9" rx="5" fill="#2D5A3D" />
+      <rect x="72" y="74" width="16" height="9" rx="5" fill="#2D5A3D" />
     </svg>
   );
 }

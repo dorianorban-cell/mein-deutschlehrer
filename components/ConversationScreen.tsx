@@ -45,11 +45,10 @@ function IconClock({ className }: { className?: string }) {
   );
 }
 
-function IconHeadphones({ className }: { className?: string }) {
+function IconPhone({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 18v-6a9 9 0 0118 0v6" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
     </svg>
   );
 }
@@ -76,15 +75,20 @@ export default function ConversationScreen({ profile }: Props) {
 
   const voiceButtonRef = useRef<VoiceButtonHandle>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const sessionStartRef = useRef<number | null>(null);
   const autoListenRef = useRef(false);
 
-  // Create AudioContext on mount so it always exists before first playback
+  // Create AudioContext and persistent <audio> element on mount
   useEffect(() => {
     const AudioCtx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioCtx) audioCtxRef.current = new AudioCtx();
+
+    const el = new Audio();
+    el.setAttribute("playsinline", "");
+    audioElRef.current = el;
   }, []);
 
   function syncAutoListen(val: boolean) {
@@ -93,47 +97,51 @@ export default function ConversationScreen({ profile }: Props) {
   }
 
   // Must be called from a user-gesture handler.
-  // Playing a silent 1-sample buffer is the only reliable way to unlock
-  // AudioContext on iOS Safari — resume() alone is not enough.
+  // Unlocks both WebAudio context and the persistent <audio> element (iOS Safari requires both).
   function unlockAudio() {
+    // Unlock WebAudio context
     const ctx = audioCtxRef.current;
-    if (!ctx) return;
-    if (ctx.state === "suspended") ctx.resume();
-    try {
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-    } catch (_) { /* ignore */ }
+    if (ctx) {
+      if (ctx.state === "suspended") ctx.resume();
+      try {
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch (_) { /* ignore */ }
+    }
+    // Unlock persistent <audio> element — play a muted silent buffer so future
+    // non-gesture plays are allowed by the browser (critical for iOS Safari).
+    const el = audioElRef.current;
+    if (el && !el.dataset.unlocked) {
+      el.muted = true;
+      el.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+      el.play().then(() => {
+        el.pause();
+        el.muted = false;
+        el.src = "";
+        el.dataset.unlocked = "1";
+      }).catch(() => {});
+    }
   }
 
+  // Use the pre-unlocked persistent <audio> element as primary playback method.
+  // Falls back to a fresh Audio element if somehow the ref is gone.
   async function playAudioBuffer(arrayBuffer: ArrayBuffer): Promise<void> {
     return new Promise((resolve) => {
-      function fallbackAudioElement() {
-        const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-        audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-        audio.play().catch(() => resolve());
-      }
-
-      const ctx = audioCtxRef.current;
-      if (!ctx) { fallbackAudioElement(); return; }
-
-      const tryWebAudio = async () => {
-        // resume is safe to call even when already running
-        if (ctx.state !== "running") await ctx.resume();
-        const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
-        const source = ctx.createBufferSource();
-        source.buffer = decoded;
-        source.connect(ctx.destination);
-        source.onended = () => resolve();
-        source.start(0);
-      };
-
-      tryWebAudio().catch(() => fallbackAudioElement());
+      const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
+      const url = URL.createObjectURL(blob);
+      const el = audioElRef.current ?? new Audio();
+      el.onended = () => { URL.revokeObjectURL(url); resolve(); };
+      el.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      el.src = url;
+      el.load();
+      el.play().catch((e) => {
+        console.error("TTS play failed:", e);
+        URL.revokeObjectURL(url);
+        resolve();
+      });
     });
   }
 
@@ -271,7 +279,21 @@ export default function ConversationScreen({ profile }: Props) {
       <ConversationFeed messages={messages} status={status} profileName={profile.name} />
 
       {/* Controls */}
-      <div className="shrink-0 bg-parchment border-t border-border-warm px-4 pt-4 pb-3">
+      <div className="shrink-0 bg-parchment border-t border-border-warm px-4 pt-3 pb-3">
+
+        {/* Topic chips */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-3 -mx-1 px-1">
+          {["Beziehungen", "Zukunft", "Psychologie", "Reisen", "Arbeit", "Musik", "Sport", "Philosophie", "Familie", "Kultur"].map((topic) => (
+            <button
+              key={topic}
+              onClick={() => { unlockAudio(); sendMessage(`Lass uns über ${topic} sprechen.`); }}
+              disabled={status !== "idle"}
+              className="shrink-0 px-3 py-1 bg-cream border border-border-warm rounded-full font-jetbrains text-[11px] text-forest tracking-wide hover:border-forest hover:bg-forest hover:text-cream transition-all disabled:opacity-40"
+            >
+              {topic}
+            </button>
+          ))}
+        </div>
 
         {/* Button row: [auto-listen] [mic/input] [keyboard] */}
         <div
@@ -290,7 +312,7 @@ export default function ConversationScreen({ profile }: Props) {
                 : "bg-cream border-border-warm text-muted-brown hover:border-forest hover:text-forest"
             }`}
           >
-            <IconHeadphones className="w-5 h-5" />
+            <IconPhone className="w-5 h-5" />
           </button>
 
           {/* Center: mic or keyboard input */}
