@@ -15,6 +15,31 @@ const LEVEL_NAMES: Record<string, string> = {
   C1: "Kompetent",
 };
 
+function IconFlame({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z" />
+    </svg>
+  );
+}
+
+function IconDiamond({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M19 3H5L2 9l10 12L22 9l-3-6zm-7 14.5L4.5 9H8l4 9zm0 0l4-9h3.5L12 17.5zM9.5 9l2.5-4 2.5 4h-5z" />
+    </svg>
+  );
+}
+
+function IconCalendar({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
 export default async function ProfilPage({ params }: Props) {
   const { profileId } = await params;
 
@@ -29,7 +54,6 @@ export default async function ProfilPage({ params }: Props) {
     select: { startedAt: true },
   });
 
-  // Compute streak: consecutive days with sessions going back from today
   const daySet = new Set(sessions.map((s) => s.startedAt.toDateString()));
   let streak = 0;
   const today = new Date();
@@ -58,12 +82,11 @@ export default async function ProfilPage({ params }: Props) {
 
   return (
     <div className="flex flex-col h-screen bg-parchment">
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto scrollbar-none px-6 pt-12 pb-6">
 
         {/* Greeting */}
         <h1 className="font-playfair font-bold text-4xl text-forest mb-2">
-          Hallo, {profile.name}! 👋
+          Hallo, {profile.name}!
         </h1>
         <p className="font-source-serif italic text-gold text-lg mb-6 leading-snug">
           {daysSince === 0
@@ -81,26 +104,24 @@ export default async function ProfilPage({ params }: Props) {
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3 mb-8">
           <div className="bg-cream border border-border-warm rounded-xl p-4 flex flex-col items-center gap-1.5">
-            <span className="text-2xl">🔥</span>
+            <IconFlame className="w-7 h-7 text-gold" />
             <span className="font-jetbrains text-xl font-bold text-forest">{streak}</span>
             <span className="font-jetbrains text-[10px] text-muted-brown uppercase tracking-wide">Streak</span>
           </div>
           <div className="bg-cream border border-border-warm rounded-xl p-4 flex flex-col items-center gap-1.5">
-            <span className="text-2xl">✦</span>
+            <IconDiamond className="w-7 h-7 text-forest" />
             <span className="font-jetbrains text-xl font-bold text-forest">{totalMistakes}</span>
             <span className="font-jetbrains text-[10px] text-muted-brown uppercase tracking-wide">Fehler</span>
           </div>
           <div className="bg-cream border border-border-warm rounded-xl p-4 flex flex-col items-center gap-1.5">
-            <span className="text-2xl">📅</span>
+            <IconCalendar className="w-7 h-7 text-forest" />
             <span className="font-jetbrains text-[11px] font-bold text-forest text-center leading-tight">{memberSince}</span>
             <span className="font-jetbrains text-[10px] text-muted-brown uppercase tracking-wide">Seit</span>
           </div>
         </div>
 
-        {/* Divider */}
         <hr className="border-border-warm mb-8" />
 
-        {/* Report button */}
         <Link
           href={`/${profileId}/report`}
           className="block w-full border-2 border-forest text-forest font-jetbrains font-semibold text-sm tracking-wide py-3.5 rounded-xl text-center mb-4 hover:bg-forest hover:text-cream transition-colors"
@@ -108,10 +129,8 @@ export default async function ProfilPage({ params }: Props) {
           Fehler-Bericht öffnen
         </Link>
 
-        {/* Placeholder space for future buttons */}
         <div className="h-16" />
 
-        {/* Profile switch */}
         <Link
           href="/"
           className="block w-full text-center font-jetbrains text-sm text-muted-brown hover:text-forest transition-colors py-2"

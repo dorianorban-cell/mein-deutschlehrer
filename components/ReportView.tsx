@@ -55,6 +55,31 @@ function dayKey(iso: string) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
+function IconLightbulb({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  );
+}
+
+function IconCalendar({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function IconCheck({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
 function CategoryView({ mistakes }: { mistakes: Mistake[] }) {
   if (mistakes.length === 0) return <EmptyState />;
 
@@ -127,6 +152,11 @@ function DateView({ mistakes }: { mistakes: Mistake[] }) {
 }
 
 function MistakeCard({ mistake: m, showBadge }: { mistake: Mistake; showBadge: boolean }) {
+  const badgeLabel = m.count > 1 ? "wiederholt" : "neu";
+  const badgeStyle = m.count > 1
+    ? "bg-amber-100 text-amber-700 border border-amber-200"
+    : "bg-green-50 text-forest border border-green-200";
+
   return (
     <div className="bg-cream border border-border-warm rounded-lg p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -140,7 +170,9 @@ function MistakeCard({ mistake: m, showBadge }: { mistake: Mistake; showBadge: b
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {showBadge && (
-            <span className="text-xs">{m.count > 1 ? "⚠️" : "🆕"}</span>
+            <span className={`font-jetbrains text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${badgeStyle}`}>
+              {badgeLabel}
+            </span>
           )}
           <span
             className={`font-jetbrains text-xs font-bold px-2 py-0.5 rounded-full ${
@@ -151,13 +183,17 @@ function MistakeCard({ mistake: m, showBadge }: { mistake: Mistake; showBadge: b
                 : "bg-border-warm text-muted-brown"
             }`}
           >
-            {m.count}×
+            {m.count}&times;
           </span>
         </div>
       </div>
-      <p className="font-source-serif text-xs text-muted-brown leading-snug">💡 {m.rule}</p>
-      <p className="font-jetbrains text-[10px] text-muted-brown/70">
-        📅 Zuerst: {formatDate(m.firstSeen)} · Zuletzt: {formatDate(m.lastSeen)}
+      <p className="font-source-serif text-xs text-muted-brown leading-snug flex items-start gap-1">
+        <IconLightbulb className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        {m.rule}
+      </p>
+      <p className="font-jetbrains text-[10px] text-muted-brown/70 flex items-center gap-1">
+        <IconCalendar className="w-3 h-3 shrink-0" />
+        Zuerst: {formatDate(m.firstSeen)} · Zuletzt: {formatDate(m.lastSeen)}
       </p>
     </div>
   );
@@ -166,7 +202,7 @@ function MistakeCard({ mistake: m, showBadge }: { mistake: Mistake; showBadge: b
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-      <p className="text-3xl">✅</p>
+      <IconCheck className="w-12 h-12 text-forest opacity-30" />
       <p className="font-source-serif italic text-muted-brown text-sm">
         Noch keine Fehler aufgezeichnet.
       </p>
@@ -201,9 +237,9 @@ export default function ReportView({
       lines.push(`\n### ${categoryLabel(cat)}`);
       for (const m of items) {
         lines.push(
-          `❌ ${m.original} → ✅ ${m.corrected}`,
-          `💡 ${m.rule}`,
-          `📅 Zuerst: ${formatDate(m.firstSeen)} · Zuletzt: ${formatDate(m.lastSeen)} · ${m.count}×`,
+          `Fehler: ${m.original} → Korrekt: ${m.corrected}`,
+          `Regel: ${m.rule}`,
+          `Zuerst: ${formatDate(m.firstSeen)} · Zuletzt: ${formatDate(m.lastSeen)} · ${m.count}x`,
           ""
         );
       }
@@ -242,7 +278,9 @@ export default function ReportView({
             onClick={handleCopy}
             className="flex items-center gap-1.5 font-jetbrains text-xs px-3 py-2 rounded-lg border border-border-warm text-muted-brown hover:text-forest hover:border-forest transition-colors"
           >
-            <span>{copied ? "✅" : "📋"}</span>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
             <span>{copied ? "Kopiert!" : "Kopieren"}</span>
           </button>
         </div>

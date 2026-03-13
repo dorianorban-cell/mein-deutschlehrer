@@ -22,7 +22,10 @@ export default function Home() {
 
         {/* Footer */}
         <p className="font-jetbrains text-[10px] text-muted-brown tracking-widest uppercase flex items-center gap-1.5">
-          <span>🌐</span>
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <circle cx="12" cy="12" r="10" />
+            <path strokeLinecap="round" d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" />
+          </svg>
           <span>Deutsch lernen mit Zukunft</span>
         </p>
       </div>
