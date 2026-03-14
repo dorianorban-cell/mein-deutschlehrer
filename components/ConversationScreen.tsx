@@ -112,7 +112,9 @@ export default function ConversationScreen({ profile }: Props) {
         } catch (_) { /* ignore */ }
       }).catch(() => {});
     }
-    // Unlock persistent <audio> element — use a real silent file, not an empty WAV
+    // Unlock persistent <audio> element — play real silence during the gesture so
+    // the element is "activated" and can play without a gesture later (critical on mobile).
+    // Do NOT reset src to "" afterwards — that can lose the activated state on iOS Safari.
     const el = audioElRef.current;
     if (el && !el.dataset.unlocked) {
       el.muted = true;
@@ -120,50 +122,29 @@ export default function ConversationScreen({ profile }: Props) {
       el.play().then(() => {
         el.pause();
         el.muted = false;
-        el.src = "";
         el.dataset.unlocked = "1";
       }).catch(() => {});
     }
   }
 
-  // Play TTS audio. Tries Web Audio API first (unlocked via gesture), falls back to <audio> element.
+  // Play TTS audio via the pre-unlocked persistent <audio> element.
+  // WebAudio decodeAudioData is unreliable on mobile outside gesture context,
+  // so we use the <audio> element exclusively — it works on all platforms.
   async function playAudioBuffer(arrayBuffer: ArrayBuffer): Promise<void> {
-    return new Promise(async (resolve) => {
-      const ctx = audioCtxRef.current;
-
-      // Primary: Web Audio API (works reliably after unlockAudio is called)
-      if (ctx) {
-        try {
-          if (ctx.state !== "running") await ctx.resume();
-          const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
-          const source = ctx.createBufferSource();
-          source.buffer = decoded;
-          source.connect(ctx.destination);
-          source.onended = () => resolve();
-          source.start(0);
-          return;
-        } catch (e) {
-          console.warn("WebAudio failed, trying <audio> fallback:", e);
-        }
-      }
-
-      // Fallback: persistent <audio> element (unlocked on first gesture)
+    return new Promise((resolve) => {
       const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
       const el = audioElRef.current ?? new Audio();
       el.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      el.onerror = (e) => {
-        console.error("Audio element error:", e);
-        setAudioError("Audio konnte nicht abgespielt werden — tippe zuerst auf den Mic-Button.");
+      el.onerror = () => {
         URL.revokeObjectURL(url);
+        setAudioError("Audio blockiert — tippe auf den Mic-Button und versuche es erneut.");
         resolve();
       };
       el.src = url;
-      // Do NOT call el.load() — it resets the element mid-load and causes play() to fail on iOS
-      el.play().catch((e) => {
-        console.error("TTS play failed:", e);
-        setAudioError("Audio blockiert — tippe auf den Mic-Button und versuche es erneut.");
+      el.play().catch(() => {
         URL.revokeObjectURL(url);
+        setAudioError("Audio blockiert — tippe auf den Mic-Button und versuche es erneut.");
         resolve();
       });
     });
