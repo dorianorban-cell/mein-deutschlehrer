@@ -126,19 +126,43 @@ export default function ConversationScreen({ profile }: Props) {
     }
   }
 
-  // Use the pre-unlocked persistent <audio> element as primary playback method.
-  // Falls back to a fresh Audio element if somehow the ref is gone.
+  // Play TTS audio. Tries Web Audio API first (unlocked via gesture), falls back to <audio> element.
   async function playAudioBuffer(arrayBuffer: ArrayBuffer): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
+      const ctx = audioCtxRef.current;
+
+      // Primary: Web Audio API (works reliably after unlockAudio is called)
+      if (ctx) {
+        try {
+          if (ctx.state !== "running") await ctx.resume();
+          const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
+          const source = ctx.createBufferSource();
+          source.buffer = decoded;
+          source.connect(ctx.destination);
+          source.onended = () => resolve();
+          source.start(0);
+          return;
+        } catch (e) {
+          console.warn("WebAudio failed, trying <audio> fallback:", e);
+        }
+      }
+
+      // Fallback: persistent <audio> element (unlocked on first gesture)
       const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
       const el = audioElRef.current ?? new Audio();
       el.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      el.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+      el.onerror = (e) => {
+        console.error("Audio element error:", e);
+        setAudioError("Audio konnte nicht abgespielt werden — tippe zuerst auf den Mic-Button.");
+        URL.revokeObjectURL(url);
+        resolve();
+      };
       el.src = url;
-      el.load();
+      // Do NOT call el.load() — it resets the element mid-load and causes play() to fail on iOS
       el.play().catch((e) => {
         console.error("TTS play failed:", e);
+        setAudioError("Audio blockiert — tippe auf den Mic-Button und versuche es erneut.");
         URL.revokeObjectURL(url);
         resolve();
       });
