@@ -99,24 +99,24 @@ export default function ConversationScreen({ profile }: Props) {
   // Must be called from a user-gesture handler.
   // Unlocks both WebAudio context and the persistent <audio> element (iOS Safari requires both).
   function unlockAudio() {
-    // Unlock WebAudio context
+    // Unlock WebAudio context — must await resume() before starting the buffer
     const ctx = audioCtxRef.current;
-    if (ctx) {
-      if (ctx.state === "suspended") ctx.resume();
-      try {
-        const buf = ctx.createBuffer(1, 1, 22050);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
-      } catch (_) { /* ignore */ }
+    if (ctx && ctx.state !== "running") {
+      ctx.resume().then(() => {
+        try {
+          const buf = ctx.createBuffer(1, 1, 22050);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start(0);
+        } catch (_) { /* ignore */ }
+      }).catch(() => {});
     }
-    // Unlock persistent <audio> element — play a muted silent buffer so future
-    // non-gesture plays are allowed by the browser (critical for iOS Safari).
+    // Unlock persistent <audio> element — use a real silent file, not an empty WAV
     const el = audioElRef.current;
     if (el && !el.dataset.unlocked) {
       el.muted = true;
-      el.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+      el.src = "/silence.wav";
       el.play().then(() => {
         el.pause();
         el.muted = false;
