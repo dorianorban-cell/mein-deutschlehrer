@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 interface Mistake {
   id: string;
@@ -19,6 +20,7 @@ interface Props {
   profileName: string;
   generatedDate: string;
   trackingSince: string;
+  profileId: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -80,7 +82,7 @@ function IconCheck({ className }: { className?: string }) {
   );
 }
 
-function CategoryView({ mistakes }: { mistakes: Mistake[] }) {
+function CategoryView({ mistakes, profileId }: { mistakes: Mistake[]; profileId: string }) {
   if (mistakes.length === 0) return <EmptyState />;
 
   const groups: Record<string, Mistake[]> = {};
@@ -106,6 +108,12 @@ function CategoryView({ mistakes }: { mistakes: Mistake[] }) {
             <span className="font-jetbrains text-xs text-muted-brown">
               · {items.reduce((s, m) => s + m.count, 0)} Vorkommen
             </span>
+            <Link
+              href={`/${profileId}/lektion?category=${cat}`}
+              className="ml-auto shrink-0 flex items-center gap-1 font-jetbrains text-[10px] font-semibold px-2.5 py-1 rounded-full bg-forest text-cream hover:brightness-110 transition-all"
+            >
+              Lektion starten
+            </Link>
           </div>
           <div className="space-y-2">
             {items.map((m) => (
@@ -216,6 +224,7 @@ export default function ReportView({
   profileName,
   generatedDate,
   trackingSince,
+  profileId,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"category" | "date">("category");
   const [copied, setCopied] = useState(false);
@@ -286,7 +295,7 @@ export default function ReportView({
         </div>
 
         {activeTab === "category" ? (
-          <CategoryView mistakes={mistakes} />
+          <CategoryView mistakes={mistakes} profileId={profileId} />
         ) : (
           <DateView mistakes={mistakes} />
         )}

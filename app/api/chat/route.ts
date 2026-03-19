@@ -42,10 +42,11 @@ function parseResponse(raw: string): {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { transcript, profileId, sessionId: incomingSessionId } = body as {
+  const { transcript, profileId, sessionId: incomingSessionId, lessonSystemOverride } = body as {
     transcript: string;
     profileId: string;
     sessionId?: string;
+    lessonSystemOverride?: string;
   };
 
   if (!transcript?.trim() || !profileId) {
@@ -77,8 +78,8 @@ export async function POST(request: Request) {
     data: { profileId, sessionId, role: "user", content: transcript.trim() },
   });
 
-  // 5. Build system prompt (uses profile.facts from DB)
-  const systemPrompt = buildSystemPrompt({
+  // 5. Build system prompt (use lesson override if in roleplay mode)
+  const systemPrompt = lessonSystemOverride ?? buildSystemPrompt({
     name: profile.name,
     level: profile.level,
     facts: profile.facts,

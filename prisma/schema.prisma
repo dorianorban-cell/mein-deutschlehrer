@@ -14,9 +14,10 @@ model Profile {
   facts     String    @default("[]") // JSON array of remembered facts
   createdAt DateTime  @default(now())
 
-  sessions  Session[]
-  messages  Message[]
-  mistakes  Mistake[]
+  sessions       Session[]
+  messages       Message[]
+  mistakes       Mistake[]
+  lessonAttempts LessonAttempt[]
 }
 
 model Session {
@@ -56,4 +57,15 @@ model Mistake {
 
   profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   session    Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model LessonAttempt {
+  id          String   @id @default(cuid())
+  profileId   String
+  category    String
+  completedAt DateTime @default(now())
+  score       Int      @default(0)
+  total       Int      @default(0)
+
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 }

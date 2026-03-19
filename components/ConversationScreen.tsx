@@ -5,6 +5,7 @@ import VoiceButton, { type VoiceButtonHandle } from "@/components/VoiceButton";
 import ConversationFeed, { type Message, type Correction } from "@/components/ConversationFeed";
 import MistakePanel from "@/components/MistakePanel";
 import BottomNav from "@/components/BottomNav";
+import LessonNudgeBanner from "@/components/LessonNudgeBanner";
 
 type Status = "idle" | "thinking" | "speaking";
 
@@ -72,6 +73,7 @@ export default function ConversationScreen({ profile }: Props) {
   const [autoListenMode, setAutoListenMode] = useState(false);
   const [keyboardMode, setKeyboardMode] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   const voiceButtonRef = useRef<VoiceButtonHandle>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -382,6 +384,15 @@ export default function ConversationScreen({ profile }: Props) {
           </span>
         </div>
       </div>
+
+      {/* Lesson nudge banner */}
+      {status === "idle" && sessionCorrections.length > 0 && messages.length > 0 && !nudgeDismissed && (
+        <LessonNudgeBanner
+          profileId={profile.id}
+          corrections={sessionCorrections}
+          onDismiss={() => setNudgeDismissed(true)}
+        />
+      )}
 
       <BottomNav profileId={profile.id} active="chat" />
 

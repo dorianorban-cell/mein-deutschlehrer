@@ -83,6 +83,7 @@ export default async function ReportPage({ params }: Props) {
         profileName={profile.name}
         generatedDate={generatedDate}
         trackingSince={trackingSince}
+        profileId={profileId}
       />
 
       <BottomNav profileId={profileId} active="report" />
