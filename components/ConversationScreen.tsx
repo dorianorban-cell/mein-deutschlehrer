@@ -80,6 +80,7 @@ export default function ConversationScreen({ profile }: Props) {
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const sessionStartRef = useRef<number | null>(null);
   const autoListenRef = useRef(false);
+  const skipAudioRef = useRef<(() => void) | null>(null);
 
   // Create AudioContext and persistent <audio> element on mount
   useEffect(() => {
@@ -137,19 +138,37 @@ export default function ConversationScreen({ profile }: Props) {
       const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
       const el = audioElRef.current ?? new Audio();
-      el.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      el.onerror = () => {
+
+      const done = () => {
         URL.revokeObjectURL(url);
-        setAudioError("Audio blockiert — tippe auf den Mic-Button und versuche es erneut.");
+        skipAudioRef.current = null;
         resolve();
+      };
+
+      skipAudioRef.current = () => { el.pause(); done(); };
+
+      el.onended = done;
+      el.onerror = () => {
+        setAudioError("Audio blockiert — tippe auf den Mic-Button und versuche es erneut.");
+        done();
       };
       el.src = url;
       el.play().catch(() => {
-        URL.revokeObjectURL(url);
         setAudioError("Audio blockiert — tippe auf den Mic-Button und versuche es erneut.");
-        resolve();
+        done();
       });
     });
+  }
+
+  function skipAudio() {
+    if (skipAudioRef.current) {
+      skipAudioRef.current();
+      skipAudioRef.current = null;
+    }
+    setStatus("idle");
+    if (autoListenRef.current && !keyboardMode) {
+      setTimeout(() => voiceButtonRef.current?.startRecording(), 400);
+    }
   }
 
   async function sendMessage(text: string) {
@@ -301,6 +320,21 @@ export default function ConversationScreen({ profile }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Skip button — appears while Max is speaking */}
+        {status === "speaking" && (
+          <div className="flex justify-center mb-3">
+            <button
+              onClick={skipAudio}
+              className="flex items-center gap-1.5 px-4 py-2 bg-cream border border-border-warm rounded-full font-jetbrains text-[11px] text-muted-brown hover:text-forest hover:border-forest transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              Überspringen
+            </button>
+          </div>
+        )}
 
         {/* Button row: [auto-listen] [mic/input] [keyboard] */}
         <div

@@ -38,11 +38,12 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
   const [lesson, setLesson] = useState<LessonContent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [explanationStep, setExplanationStep] = useState(0);
-  const [exerciseIndex, setExerciseIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  // Stores a callback that stops current audio and resolves the playAudioBuffer promise
+  const skipAudioRef = useRef<(() => void) | null>(null);
 
   // Create persistent audio element on mount
   useEffect(() => {
@@ -65,15 +66,37 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
     }
   }
 
+  // Stop current audio immediately and resolve the pending playAudioBuffer promise
+  const stopAudio = useCallback(() => {
+    if (skipAudioRef.current) {
+      skipAudioRef.current();
+      skipAudioRef.current = null;
+    }
+    setIsSpeaking(false);
+  }, []);
+
   const playAudioBuffer = useCallback(async (arrayBuffer: ArrayBuffer): Promise<void> => {
     return new Promise((resolve) => {
       const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
       const url = URL.createObjectURL(blob);
       const el = audioElRef.current ?? new Audio();
-      el.onended = () => { URL.revokeObjectURL(url); resolve(); };
-      el.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+
+      const done = () => {
+        URL.revokeObjectURL(url);
+        skipAudioRef.current = null;
+        resolve();
+      };
+
+      // Store skip callback so stopAudio() can terminate playback early
+      skipAudioRef.current = () => {
+        el.pause();
+        done();
+      };
+
+      el.onended = done;
+      el.onerror = done;
       el.src = url;
-      el.play().catch(() => { URL.revokeObjectURL(url); resolve(); });
+      el.play().catch(done);
     });
   }, []);
 
@@ -107,7 +130,6 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
         const data = await res.json() as { lesson: LessonContent };
         setLesson(data.lesson);
         setPhase("explanation");
-        // Auto-play first explanation step
         speakText(data.lesson.explanationSteps[0].text);
       } catch {
         setError("Lektion konnte nicht geladen werden. Bitte versuche es erneut.");
@@ -117,6 +139,7 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
 
   const handleExplanationNext = () => {
     if (!lesson) return;
+    stopAudio(); // stop speaking if still playing
     const nextStep = explanationStep + 1;
     if (nextStep >= lesson.explanationSteps.length) {
       setPhase("exercises");
@@ -130,20 +153,6 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
     if (correct) setScore((s) => s + 1);
   };
 
-  const handleExerciseContinue = () => {
-    if (!lesson) return;
-    const nextIdx = exerciseIndex + 1;
-    if (nextIdx >= lesson.exercises.length) {
-      setPhase("roleplay");
-    } else {
-      setExerciseIndex(nextIdx);
-    }
-  };
-
-  // We intercept the "answer submitted + spoken" event from exercises
-  // by listening to isSpeaking going false, then auto-advance is done by user tapping Weiter
-  // (onAnswer triggers the result display, user taps Weiter → handleExerciseContinue)
-
   const categoryLabel = lesson?.categoryLabel ?? CATEGORY_LABELS[initialCategory] ?? initialCategory;
 
   return (
@@ -155,7 +164,7 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-4 py-3 bg-cream border-b border-border-warm">
         <button
-          onClick={() => router.back()}
+          onClick={() => { stopAudio(); router.back(); }}
           className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-brown hover:text-forest hover:bg-border-warm/40 transition-colors"
         >
           <IconArrowLeft className="w-5 h-5" />
@@ -163,7 +172,7 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
 
         <div className="flex flex-col items-center">
           <span className="font-playfair font-bold text-forest text-sm">
-            Lektion: {categoryLabel}
+            {lesson?.ruleHeadline ?? `Lektion: ${categoryLabel}`}
           </span>
           {phase !== "loading" && (
             <span className="font-jetbrains text-[9px] text-muted-brown tracking-widest uppercase">
@@ -207,6 +216,7 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
           isSpeaking={isSpeaking}
           isLast={explanationStep === lesson.explanationSteps.length - 1}
           onNext={handleExplanationNext}
+          onSkip={stopAudio}
         />
       )}
 
@@ -214,10 +224,9 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
       {phase === "exercises" && lesson && (
         <LessonPhaseExercises
           exercises={lesson.exercises}
-          exerciseIndex={exerciseIndex}
           isSpeaking={isSpeaking}
           onAnswer={handleExerciseAnswer}
-          onContinue={handleExerciseContinue}
+          onComplete={() => setPhase("roleplay")}
         />
       )}
 

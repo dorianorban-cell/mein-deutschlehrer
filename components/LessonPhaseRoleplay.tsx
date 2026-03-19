@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import ConversationFeed, { type Message, type Correction } from "@/components/ConversationFeed";
 import VoiceButton, { type VoiceButtonHandle } from "@/components/VoiceButton";
 import { ROLEPLAY_SCENARIOS } from "@/lib/lesson-types";
-import type { LessonCategory } from "@/lib/lesson-types";
+import type { LessonCategory, RoleplayScenario } from "@/lib/lesson-types";
 import { buildRoleplaySystemPrompt } from "@/lib/prompts";
 
 interface Props {
@@ -26,7 +26,7 @@ export default function LessonPhaseRoleplay({
   playAudioBuffer,
   onComplete,
 }: Props) {
-  const [scenario, setScenario] = useState<string | null>(null);
+  const [scenario, setScenario] = useState<RoleplayScenario | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<"idle" | "thinking" | "speaking">("idle");
   const [round, setRound] = useState(0);
@@ -86,7 +86,6 @@ export default function LessonPhaseRoleplay({
         await playAudioBuffer(buf);
       }
 
-      // End after MAX_ROUNDS or if Max signals end
       if (newRound >= MAX_ROUNDS || data.reply.includes("Lektion beendet")) {
         setTimeout(onComplete, 1000);
       }
@@ -102,19 +101,22 @@ export default function LessonPhaseRoleplay({
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         <p className="font-playfair text-forest text-xl font-semibold text-center mb-2">
-          Wähle ein Thema
+          Wähle eine Situation
         </p>
         <p className="font-source-serif text-muted-brown text-sm text-center mb-8">
-          Max führt ein Gespräch mit dir über dieses Thema und korrigiert deine Grammatik.
+          Max übernimmt die Rolle und ihr übt in einem echten Gespräch.
         </p>
         <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
           {ROLEPLAY_SCENARIOS.map((s) => (
             <button
               key={s.id}
-              onClick={() => setScenario(s.label)}
-              className="bg-cream border-2 border-border-warm rounded-2xl px-4 py-5 text-center font-playfair text-forest text-sm font-semibold hover:border-forest hover:bg-parchment transition-all"
+              onClick={() => setScenario(s)}
+              className="bg-cream border-2 border-border-warm rounded-2xl px-4 py-5 text-left hover:border-forest hover:bg-parchment transition-all"
             >
-              {s.label}
+              <p className="font-playfair text-forest text-sm font-semibold">{s.label}</p>
+              <p className="font-jetbrains text-[10px] text-muted-brown mt-1 leading-snug line-clamp-2">
+                {s.description.split(".")[0]}.
+              </p>
             </button>
           ))}
         </div>
@@ -126,11 +128,16 @@ export default function LessonPhaseRoleplay({
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Round indicator */}
       <div className="shrink-0 flex items-center justify-between px-4 py-2 bg-cream border-b border-border-warm">
-        <span className="font-jetbrains text-[10px] text-muted-brown tracking-widest uppercase">
-          Rollenspiel: {scenario}
-        </span>
-        <span className="font-jetbrains text-[10px] text-muted-brown">
-          Runde {round} / {MAX_ROUNDS}
+        <div className="flex flex-col">
+          <span className="font-jetbrains text-[10px] text-muted-brown tracking-widest uppercase">
+            {scenario.label}
+          </span>
+          <span className="font-source-serif text-[11px] text-muted-brown italic leading-tight max-w-xs line-clamp-1">
+            {scenario.description.split(".")[0]}.
+          </span>
+        </div>
+        <span className="font-jetbrains text-[10px] text-muted-brown shrink-0">
+          {round} / {MAX_ROUNDS}
         </span>
       </div>
 

@@ -82,7 +82,32 @@ function IconCheck({ className }: { className?: string }) {
   );
 }
 
+function IconChevron({ className, open }: { className?: string; open: boolean }) {
+  return (
+    <svg
+      className={`${className} transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+function IconGraduationCap({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+    </svg>
+  );
+}
+
 function CategoryView({ mistakes, profileId }: { mistakes: Mistake[]; profileId: string }) {
+  const [openCats, setOpenCats] = useState<Set<string>>(new Set());
+
   if (mistakes.length === 0) return <EmptyState />;
 
   const groups: Record<string, Mistake[]> = {};
@@ -97,31 +122,84 @@ function CategoryView({ mistakes, profileId }: { mistakes: Mistake[]; profileId:
       a[1].reduce((s, m) => s + m.count, 0)
   );
 
+  function toggleCat(cat: string) {
+    setOpenCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) {
+        next.delete(cat);
+      } else {
+        next.add(cat);
+      }
+      return next;
+    });
+  }
+
   return (
-    <div className="space-y-8">
-      {sortedGroups.map(([cat, items]) => (
-        <section key={cat}>
-          <div className="flex items-center gap-2 mb-3">
-            <h3 className="font-jetbrains text-xs font-semibold text-forest uppercase tracking-widest">
-              {categoryLabel(cat).toUpperCase()}
-            </h3>
-            <span className="font-jetbrains text-xs text-muted-brown">
-              · {items.reduce((s, m) => s + m.count, 0)} Vorkommen
-            </span>
-            <Link
-              href={`/${profileId}/lektion?category=${cat}`}
-              className="ml-auto shrink-0 flex items-center gap-1 font-jetbrains text-[10px] font-semibold px-2.5 py-1 rounded-full bg-forest text-cream hover:brightness-110 transition-all"
+    <div className="space-y-3">
+      {sortedGroups.map(([cat, items]) => {
+        const isOpen = openCats.has(cat);
+        const total = items.reduce((s, m) => s + m.count, 0);
+        const repeatCount = items.filter((m) => m.count > 1).length;
+
+        return (
+          <section key={cat} className="bg-cream border border-border-warm rounded-2xl overflow-hidden">
+            {/* Accordion header */}
+            <button
+              onClick={() => toggleCat(cat)}
+              className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-parchment transition-colors"
             >
-              Lektion starten
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {items.map((m) => (
-              <MistakeCard key={m.id} mistake={m} showBadge={false} />
-            ))}
-          </div>
-        </section>
-      ))}
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col">
+                  <span className="font-playfair font-bold text-forest text-base">
+                    {categoryLabel(cat)}
+                  </span>
+                  <span className="font-jetbrains text-[10px] text-muted-brown mt-0.5">
+                    {items.length} {items.length === 1 ? "Fehler" : "Fehler"} · {total} Vorkommen
+                    {repeatCount > 0 && ` · ${repeatCount} wiederholt`}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Count badge */}
+                <span
+                  className={`font-jetbrains text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                    total >= 5
+                      ? "bg-red-100 text-correction-red"
+                      : total >= 3
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-border-warm text-muted-brown"
+                  }`}
+                >
+                  {total}&times;
+                </span>
+                <IconChevron className="w-4 h-4 text-muted-brown" open={isOpen} />
+              </div>
+            </button>
+
+            {/* Expanded content */}
+            {isOpen && (
+              <div className="border-t border-border-warm">
+                <div className="px-5 py-4 space-y-2">
+                  {items.map((m) => (
+                    <MistakeCard key={m.id} mistake={m} showBadge={false} />
+                  ))}
+                </div>
+
+                {/* Lektion starten CTA */}
+                <div className="px-5 pb-5">
+                  <Link
+                    href={`/${profileId}/lektion?category=${cat}`}
+                    className="flex items-center justify-center gap-2 w-full py-3.5 bg-forest text-cream font-jetbrains text-xs font-semibold rounded-2xl hover:brightness-110 transition-all tracking-wide"
+                  >
+                    <IconGraduationCap className="w-4 h-4" />
+                    Lektion starten — {categoryLabel(cat)} üben
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -166,7 +244,7 @@ function MistakeCard({ mistake: m, showBadge }: { mistake: Mistake; showBadge: b
     : "bg-green-50 text-forest border border-green-200";
 
   return (
-    <div className="bg-cream border border-border-warm rounded-lg p-4 space-y-2">
+    <div className="bg-parchment border border-border-warm rounded-lg p-4 space-y-2">
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1 min-w-0">
           <p className="font-jetbrains text-sm text-correction-red line-through leading-snug truncate">

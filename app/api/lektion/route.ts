@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const tryGenerate = async (): Promise<LessonContent> => {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
+      max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
 
