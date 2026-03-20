@@ -13,10 +13,45 @@ interface Props {
   category: LessonCategory;
   profile: { name: string; level: string; facts: string };
   playAudioBuffer: (buf: ArrayBuffer) => Promise<void>;
+  stopAudio: () => void;
   onComplete: () => void;
 }
 
 const MAX_ROUNDS = 8;
+
+// Concrete conversation starters per scenario
+const SCENARIO_STARTERS: Record<string, string[]> = {
+  gym: [
+    "Hallo! Trainierst du oft hier?",
+    "Hey, kannst du mir bei dieser Übung helfen?",
+    "Wie lange machst du schon Sport hier?",
+  ],
+  store: [
+    "Entschuldigung, wo finde ich die Pasta?",
+    "Diese Warteschlange ist heute wirklich lang...",
+    "Haben Sie dieses Produkt auch in Bio?",
+  ],
+  runclub: [
+    "Hallo, ich bin heute zum ersten Mal hier.",
+    "Wie lang ist die Strecke heute?",
+    "Seit wann bist du beim Laufclub?",
+  ],
+  cafe: [
+    "Entschuldigung, ist dieser Platz noch frei?",
+    "Der Kaffee hier ist wirklich gut, oder?",
+    "Arbeitest du auch hier in der Nähe?",
+  ],
+  job: [
+    "Guten Tag! Vielen Dank, dass Sie sich Zeit nehmen.",
+    "Ich interessiere mich sehr für diese Position.",
+    "Könnten Sie mir mehr über das Team erzählen?",
+  ],
+  arzt: [
+    "Guten Tag. Ich habe seit ein paar Tagen Rückenschmerzen.",
+    "Ich fühle mich die letzten Tage nicht so gut.",
+    "Ich habe seit gestern Abend Fieber.",
+  ],
+};
 
 export default function LessonPhaseRoleplay({
   profileId,
@@ -24,6 +59,7 @@ export default function LessonPhaseRoleplay({
   category,
   profile,
   playAudioBuffer,
+  stopAudio,
   onComplete,
 }: Props) {
   const [scenario, setScenario] = useState<RoleplayScenario | null>(null);
@@ -67,12 +103,7 @@ export default function LessonPhaseRoleplay({
       const newRound = round + 1;
       setRound(newRound);
 
-      const assistantMsg: Message = {
-        role: "assistant",
-        content: data.reply,
-        corrections: data.corrections,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply, corrections: data.corrections }]);
       setStatus("speaking");
 
       const speakRes = await fetch("/api/speak", {
@@ -99,30 +130,47 @@ export default function LessonPhaseRoleplay({
   // Scenario picker
   if (!scenario) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+      <div className="flex-1 flex flex-col overflow-y-auto px-6 py-8">
         <p className="font-playfair text-forest text-xl font-semibold text-center mb-2">
           Wähle eine Situation
         </p>
-        <p className="font-source-serif text-muted-brown text-sm text-center mb-8">
-          Max übernimmt die Rolle und ihr übt in einem echten Gespräch.
+        <p className="font-source-serif text-muted-brown text-sm text-center mb-6">
+          Max spielt die andere Person. Wähle eine Alltagssituation und übe die Grammatik direkt im Gespräch.
         </p>
-        <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
-          {ROLEPLAY_SCENARIOS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setScenario(s)}
-              className="bg-cream border-2 border-border-warm rounded-2xl px-4 py-5 text-left hover:border-forest hover:bg-parchment transition-all"
-            >
-              <p className="font-playfair text-forest text-sm font-semibold">{s.label}</p>
-              <p className="font-jetbrains text-[10px] text-muted-brown mt-1 leading-snug line-clamp-2">
-                {s.description.split(".")[0]}.
-              </p>
-            </button>
-          ))}
+        <div className="space-y-3 max-w-sm mx-auto w-full">
+          {ROLEPLAY_SCENARIOS.map((s) => {
+            const starters = SCENARIO_STARTERS[s.id] ?? [];
+            return (
+              <button
+                key={s.id}
+                onClick={() => setScenario(s)}
+                className="w-full bg-cream border-2 border-border-warm rounded-2xl px-5 py-4 text-left hover:border-forest hover:bg-parchment transition-all"
+              >
+                <p className="font-playfair text-forest text-base font-semibold mb-1">{s.label}</p>
+                <p className="font-source-serif text-xs text-muted-brown leading-snug mb-3">
+                  {s.description.split(".")[0]}.
+                </p>
+                {starters.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="font-jetbrains text-[9px] text-muted-brown tracking-widest uppercase">
+                      Mögliche Einstiege:
+                    </p>
+                    {starters.map((st, i) => (
+                      <p key={i} className="font-source-serif text-xs text-forest/70 italic">
+                        &ldquo;{st}&rdquo;
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     );
   }
+
+  const starters = SCENARIO_STARTERS[scenario.id] ?? [];
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -143,17 +191,51 @@ export default function LessonPhaseRoleplay({
 
       <ConversationFeed messages={messages} status={status} profileName={profileName} />
 
+      {/* Starter suggestion chips — shown before first message */}
+      {messages.length === 0 && status === "idle" && (
+        <div className="shrink-0 px-4 py-3 border-t border-border-warm bg-cream">
+          <p className="font-jetbrains text-[9px] text-muted-brown tracking-widest uppercase mb-2">
+            So kannst du anfangen:
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {starters.map((st, i) => (
+              <button
+                key={i}
+                onClick={() => sendMessage(st)}
+                className="text-left px-3 py-2 bg-parchment border border-border-warm rounded-xl font-source-serif text-sm text-forest italic hover:border-forest hover:bg-forest/5 transition-colors"
+              >
+                &ldquo;{st}&rdquo;
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mic controls */}
-      <div
-        className="shrink-0 flex items-center justify-center gap-4 px-4 py-4 bg-parchment border-t border-border-warm"
-        onPointerDown={() => {}}
-      >
-        <VoiceButton
-          ref={voiceButtonRef}
-          onTranscript={sendMessage}
-          disabled={status !== "idle"}
-          autoMode={true}
-        />
+      <div className="shrink-0 bg-parchment border-t border-border-warm px-4 pt-3 pb-4">
+        {/* Skip button while Max speaks */}
+        {status === "speaking" && (
+          <div className="flex justify-center mb-3">
+            <button
+              onClick={() => { stopAudio(); setStatus("idle"); }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-cream border border-border-warm rounded-full font-jetbrains text-[11px] text-muted-brown hover:text-forest hover:border-forest transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+              Überspringen
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center justify-center">
+          <VoiceButton
+            ref={voiceButtonRef}
+            onTranscript={sendMessage}
+            disabled={status !== "idle"}
+            autoMode={true}
+          />
+        </div>
       </div>
     </div>
   );

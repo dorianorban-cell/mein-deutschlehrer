@@ -3,6 +3,65 @@
 import { useState } from "react";
 import Link from "next/link";
 
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  case: "Akkusativ, Dativ, Genitiv",
+  tense: "Perfekt, Präteritum, Futur",
+  gender: "der / die / das",
+  word_order: "Verbstellung, Nebensatz",
+  vocab: "Wörter und Ausdrücke",
+};
+
+function UbenModal({ profileId, onClose }: { profileId: string; onClose: () => void }) {
+  const cats = [
+    { key: "case", label: "Kasus" },
+    { key: "tense", label: "Zeitform" },
+    { key: "gender", label: "Genus" },
+    { key: "word_order", label: "Wortstellung" },
+    { key: "vocab", label: "Vokabular" },
+  ];
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 z-50 flex items-end"
+      onClick={onClose}
+    >
+      <div
+        className="w-full bg-parchment rounded-t-3xl shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-border-warm rounded-full" />
+        </div>
+
+        <div className="px-5 pb-8 pt-3">
+          <h3 className="font-playfair font-bold text-forest text-xl mb-1">
+            Was möchtest du üben?
+          </h3>
+          <p className="font-source-serif text-sm text-muted-brown mb-5">
+            Wähle eine Kategorie — Max generiert eine neue Lektion für dich.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {cats.map((cat) => (
+              <Link
+                key={cat.key}
+                href={`/${profileId}/lektion?category=${cat.key}`}
+                onClick={onClose}
+                className="bg-cream border-2 border-border-warm rounded-2xl px-4 py-4 hover:border-forest hover:bg-forest/5 transition-all block"
+              >
+                <p className="font-playfair font-bold text-forest text-base">{cat.label}</p>
+                <p className="font-jetbrains text-[10px] text-muted-brown mt-0.5">
+                  {CATEGORY_DESCRIPTIONS[cat.key]}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface Mistake {
   id: string;
   original: string;
@@ -306,6 +365,7 @@ export default function ReportView({
 }: Props) {
   const [activeTab, setActiveTab] = useState<"category" | "date">("category");
   const [copied, setCopied] = useState(false);
+  const [showUbenModal, setShowUbenModal] = useState(false);
 
   function buildMarkdown() {
     const lines: string[] = [
@@ -341,8 +401,31 @@ export default function ReportView({
   }
 
   return (
+    <>
+      {showUbenModal && (
+        <UbenModal profileId={profileId} onClose={() => setShowUbenModal(false)} />
+      )}
+
     <div className="flex-1 overflow-y-auto scrollbar-none">
       <div className="max-w-2xl mx-auto px-4 py-5">
+
+        {/* Global Üben button */}
+        <button
+          onClick={() => setShowUbenModal(true)}
+          className="w-full flex items-center justify-between px-5 py-4 mb-5 bg-forest text-cream rounded-2xl hover:brightness-110 transition-all shadow-sm"
+        >
+          <div className="flex flex-col items-start">
+            <span className="font-playfair font-bold text-base">Üben starten</span>
+            <span className="font-jetbrains text-[10px] text-cream/70 mt-0.5 tracking-wide">
+              Neue Lektion zu einer Kategorie
+            </span>
+          </div>
+          <svg className="w-6 h-6 text-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+          </svg>
+        </button>
+
         {/* Tab pills + copy */}
         <div className="flex items-center justify-between mb-6 gap-4">
           <div className="flex gap-1 bg-border-warm/40 rounded-full p-1">
@@ -379,5 +462,6 @@ export default function ReportView({
         )}
       </div>
     </div>
+    </>
   );
 }

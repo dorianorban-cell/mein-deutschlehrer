@@ -238,6 +238,7 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
           category={initialCategory}
           profile={profile}
           playAudioBuffer={playAudioBuffer}
+          stopAudio={stopAudio}
           onComplete={() => setPhase("summary")}
         />
       )}

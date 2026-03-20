@@ -1,11 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import VoiceButton, { type VoiceButtonHandle } from "@/components/VoiceButton";
 import ConversationFeed, { type Message, type Correction } from "@/components/ConversationFeed";
 import MistakePanel from "@/components/MistakePanel";
 import BottomNav from "@/components/BottomNav";
 import LessonNudgeBanner from "@/components/LessonNudgeBanner";
+
+const CATEGORY_LABELS_SHORT: Record<string, string> = {
+  case: "Kasus",
+  tense: "Zeitform",
+  gender: "Genus",
+  word_order: "Wortstellung",
+  vocab: "Vokabular",
+};
 
 type Status = "idle" | "thinking" | "speaking";
 
@@ -74,6 +83,7 @@ export default function ConversationScreen({ profile }: Props) {
   const [keyboardMode, setKeyboardMode] = useState(false);
   const [inputText, setInputText] = useState("");
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [practiceCategory, setPracticeCategory] = useState<string | null>(null);
 
   const voiceButtonRef = useRef<VoiceButtonHandle>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -178,6 +188,7 @@ export default function ConversationScreen({ profile }: Props) {
     const userMessage: Message = { role: "user", content: text.trim() };
     setMessages((prev) => [...prev, userMessage]);
     setInputText("");
+    setPracticeCategory(null); // clear inline Üben banner on new message
     setStatus("thinking");
 
     try {
@@ -209,6 +220,8 @@ export default function ConversationScreen({ profile }: Props) {
           return updated;
         });
         setSessionCorrections((prev) => [...prev, ...chatData.corrections]);
+        // Surface inline Üben shortcut for the most-frequent mistake category
+        setPracticeCategory(chatData.corrections[0].category ?? null);
       }
 
       setMessages((prev) => [...prev, { role: "assistant", content: chatData.reply }]);
@@ -306,6 +319,29 @@ export default function ConversationScreen({ profile }: Props) {
 
       {/* Controls */}
       <div className="shrink-0 bg-parchment border-t border-border-warm px-4 pt-3 pb-3">
+
+        {/* Inline Üben shortcut after a mistake */}
+        {practiceCategory && status === "idle" && (
+          <div className="flex items-center justify-between px-4 py-2.5 mb-2 bg-amber-50 border border-amber-200 rounded-xl">
+            <span className="font-source-serif text-sm text-amber-800">
+              Fehler in <strong>{CATEGORY_LABELS_SHORT[practiceCategory] ?? practiceCategory}</strong> — sofort üben?
+            </span>
+            <div className="flex items-center gap-2 shrink-0 ml-3">
+              <Link
+                href={`/${profile.id}/lektion?category=${practiceCategory}`}
+                className="font-jetbrains text-[11px] font-semibold px-3 py-1.5 bg-forest text-cream rounded-full hover:brightness-110 transition-all"
+              >
+                Üben →
+              </Link>
+              <button
+                onClick={() => setPracticeCategory(null)}
+                className="font-jetbrains text-[11px] text-muted-brown hover:text-forest"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Topic chips */}
         <div className="flex gap-2 overflow-x-auto scrollbar-none pb-3 -mx-1 px-1">

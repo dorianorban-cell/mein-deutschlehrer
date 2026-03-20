@@ -75,12 +75,18 @@ export default function LessonPhaseExercises({ exercises, isSpeaking, onAnswer, 
   };
 
   const advanceType = () => {
+    setResult(null);
+    setUserAnswer("");
     const nextSubIdx = subIdx + 1;
     if (nextSubIdx < typeIndices.length) {
       setTypeSubIdx((prev) => ({ ...prev, [activeType]: nextSubIdx }));
+    } else {
+      // Type exhausted — jump to next type with unfinished exercises
+      const nextType = availableTypes.find(
+        (t) => t !== activeType && (grouped[t] ?? []).some((i) => !done.has(i))
+      );
+      if (nextType) setActiveType(nextType);
     }
-    setResult(null);
-    setUserAnswer("");
   };
 
   const handleSubmit = async (answer: string) => {
@@ -107,8 +113,22 @@ export default function LessonPhaseExercises({ exercises, isSpeaking, onAnswer, 
   };
 
   const handleSkip = () => {
-    setDone((prev) => new Set([...prev, currentGlobalIdx]));
-    advanceType();
+    const newDone = new Set([...done, currentGlobalIdx]);
+    setDone(newDone);
+    setResult(null);
+    setUserAnswer("");
+
+    const nextSubIdx = subIdx + 1;
+    if (nextSubIdx < typeIndices.length) {
+      // More exercises of this type
+      setTypeSubIdx((prev) => ({ ...prev, [activeType]: nextSubIdx }));
+    } else {
+      // Exhausted this type — jump to next type that still has unfinished exercises
+      const nextType = availableTypes.find(
+        (t) => t !== activeType && (grouped[t] ?? []).some((i) => !newDone.has(i))
+      );
+      if (nextType) setActiveType(nextType);
+    }
   };
 
   if (!exercise) return null;

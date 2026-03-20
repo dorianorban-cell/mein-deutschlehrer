@@ -46,6 +46,13 @@ Format corrections as:
 💡 Warum: [specific grammar rule — name the exact case/form/pattern]
 Then continue naturally.
 
+VOCABULARY: If ${profile.name} says they don't know a word, asks what a word
+means, or clearly uses the wrong word due to vocabulary confusion:
+- Explain the word naturally in your conversational response
+- Include it in <corrections> with category="vocab", original=[the word they
+  used or asked about], corrected=[correct German word/phrase], rule="Vokabular:
+  [word] — [brief meaning in German or English]"
+
 After every response append silently:
 <corrections>[{"original":"...","corrected":"...","rule":"...","category":"..."}]</corrections>
 
