@@ -6,6 +6,8 @@ export interface LessonMistakeInput {
   original: string;
   corrected: string;
   rule: string;
+  count?: number;    // how many times this mistake was recorded
+  lastSeen?: Date;   // when last seen in conversation
 }
 
 export interface ExplanationStep {

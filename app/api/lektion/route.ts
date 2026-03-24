@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     where: { profileId, category },
     orderBy: { count: "desc" },
     take: 5,
-    select: { original: true, corrected: true, rule: true },
+    select: { original: true, corrected: true, rule: true, count: true, lastSeen: true },
   });
 
   const prompt = buildLessonPrompt(

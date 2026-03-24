@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 
 export interface Correction {
   original: string;
@@ -95,6 +95,29 @@ function IconLightbulb({ className }: { className?: string }) {
   );
 }
 
+// ── Emoji → branded icon renderer ────────────────────────────
+const EMOJI_MAP: Record<string, React.ReactNode> = {
+  "❌": <span style={{ color: "#B5341C", fontWeight: 600 }}>✗</span>,
+  "✅": <span style={{ color: "#2D4A3E", fontWeight: 600 }}>✓</span>,
+  "💡": <span style={{ color: "#C9A84C", display: "inline-flex", verticalAlign: "text-bottom" }}><IconLightbulb className="w-3.5 h-3.5" /></span>,
+  "😄": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(:)</span>,
+  "😊": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(:)</span>,
+  "🙂": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(:)</span>,
+  "👍": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(gut)</span>,
+  "👏": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(bravo)</span>,
+};
+
+const EMOJI_SPLIT_RE = /(❌|✅|💡|😄|😊|🙂|👍|👏)/;
+
+function renderWithIcons(text: string): React.ReactNode {
+  const parts = text.split(EMOJI_SPLIT_RE);
+  return parts.map((part, i) =>
+    part in EMOJI_MAP
+      ? <React.Fragment key={i}>{EMOJI_MAP[part]}</React.Fragment>
+      : part
+  );
+}
+
 // ── Welcome screen ───────────────────────────────────────────
 function WelcomeScreen({ profileName, speaking }: { profileName: string; speaking: boolean }) {
   return (
@@ -159,7 +182,7 @@ export default function ConversationFeed({ messages, status, profileName }: Prop
                 }
               `}
             >
-              {msg.content}
+              {renderWithIcons(msg.content)}
             </div>
           </div>
 
