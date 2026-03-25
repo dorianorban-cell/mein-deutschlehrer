@@ -97,17 +97,37 @@ function IconLightbulb({ className }: { className?: string }) {
 
 // ── Emoji → branded icon renderer ────────────────────────────
 const EMOJI_MAP: Record<string, React.ReactNode> = {
-  "❌": <span style={{ color: "#B5341C", fontWeight: 600 }}>✗</span>,
-  "✅": <span style={{ color: "#2D4A3E", fontWeight: 600 }}>✓</span>,
+  // Correction markers
+  "❌": <span style={{ color: "#B5341C", fontWeight: 700 }}>✗</span>,
+  "✅": <span style={{ color: "#2D4A3E", fontWeight: 700 }}>✓</span>,
   "💡": <span style={{ color: "#C9A84C", display: "inline-flex", verticalAlign: "text-bottom" }}><IconLightbulb className="w-3.5 h-3.5" /></span>,
-  "😄": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(:)</span>,
-  "😊": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(:)</span>,
-  "🙂": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(:)</span>,
-  "👍": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(gut)</span>,
-  "👏": <span style={{ opacity: 0.6, fontSize: "0.85em" }}>(bravo)</span>,
+  // Positive reactions
+  "😄": <span style={{ fontFamily: "monospace", opacity: 0.65, fontSize: "0.8em" }}>(:)</span>,
+  "😊": <span style={{ fontFamily: "monospace", opacity: 0.65, fontSize: "0.8em" }}>(:)</span>,
+  "🙂": <span style={{ fontFamily: "monospace", opacity: 0.65, fontSize: "0.8em" }}>(:)</span>,
+  "😉": <span style={{ fontFamily: "monospace", opacity: 0.65, fontSize: "0.8em" }}>(;)</span>,
+  "😂": <span style={{ fontFamily: "monospace", opacity: 0.65, fontSize: "0.8em" }}>(:D)</span>,
+  "🤣": <span style={{ fontFamily: "monospace", opacity: 0.65, fontSize: "0.8em" }}>(:D)</span>,
+  // Affirmation
+  "👍": <span style={{ color: "#2D4A3E", fontWeight: 600, fontSize: "0.85em" }}>(gut)</span>,
+  "👏": <span style={{ color: "#C9A84C", fontWeight: 600, fontSize: "0.85em" }}>(bravo)</span>,
+  "🎯": <span style={{ color: "#2D4A3E", fontWeight: 600, fontSize: "0.85em" }}>(treffer)</span>,
+  "✨": <span style={{ color: "#C9A84C", fontWeight: 600, fontSize: "0.85em" }}>*</span>,
+  "⭐": <span style={{ color: "#C9A84C", fontWeight: 600, fontSize: "0.85em" }}>*</span>,
+  // Energy / urgency
+  "🔥": <span style={{ color: "#B5341C", fontWeight: 700, fontSize: "0.85em" }}>(!!)</span>,
+  "💪": <span style={{ color: "#2D4A3E", fontWeight: 600, fontSize: "0.85em" }}>(stark)</span>,
+  "🚀": <span style={{ color: "#2D4A3E", fontWeight: 600, fontSize: "0.85em" }}>(los)</span>,
+  // Thinking / attention
+  "🤔": <span style={{ fontFamily: "monospace", opacity: 0.65, fontSize: "0.8em" }}>(hmm)</span>,
+  "👆": <span style={{ color: "#2D4A3E", fontWeight: 600, fontSize: "0.85em" }}>(achtung)</span>,
+  "⚠️": <span style={{ color: "#B5341C", fontWeight: 700, fontSize: "0.85em" }}>[!]</span>,
+  // Encouragement
+  "💬": <span style={{ color: "#6B8A6B", fontSize: "0.85em" }}>(sprich)</span>,
+  "📝": <span style={{ color: "#6B8A6B", fontSize: "0.85em" }}>(notiz)</span>,
 };
 
-const EMOJI_SPLIT_RE = /(❌|✅|💡|😄|😊|🙂|👍|👏)/;
+const EMOJI_SPLIT_RE = /(❌|✅|💡|😄|😊|🙂|😉|😂|🤣|👍|👏|🎯|✨|⭐|🔥|💪|🚀|🤔|👆|⚠️|💬|📝)/;
 
 function renderWithIcons(text: string): React.ReactNode {
   const parts = text.split(EMOJI_SPLIT_RE);

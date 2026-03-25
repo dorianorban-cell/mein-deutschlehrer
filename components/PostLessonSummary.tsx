@@ -29,12 +29,13 @@ function IconStar({ className }: { className?: string }) {
 
 export default function PostLessonSummary({ lesson, score, total, profileId }: Props) {
   useEffect(() => {
+    const usedPrompts = lesson.exercises.map((ex) => ex.prompt);
     fetch("/api/lektion/attempt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profileId, category: lesson.category, score, total }),
+      body: JSON.stringify({ profileId, category: lesson.category, score, total, usedPrompts }),
     }).catch(() => {});
-  }, [profileId, lesson.category, score, total]);
+  }, [profileId, lesson.category, score, total, lesson.exercises]);
 
   const pct = total > 0 ? Math.round((score / total) * 100) : 0;
   const stars = pct >= 80 ? 3 : pct >= 50 ? 2 : 1;

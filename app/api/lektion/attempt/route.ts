@@ -4,11 +4,12 @@ import type { LessonCategory } from "@/lib/lesson-types";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { profileId, category, score, total } = body as {
+  const { profileId, category, score, total, usedPrompts } = body as {
     profileId: string;
     category: LessonCategory;
     score: number;
     total: number;
+    usedPrompts?: string[];
   };
 
   if (!profileId || !category) {
@@ -16,7 +17,13 @@ export async function POST(request: Request) {
   }
 
   await prisma.lessonAttempt.create({
-    data: { profileId, category, score: score ?? 0, total: total ?? 0 },
+    data: {
+      profileId,
+      category,
+      score: score ?? 0,
+      total: total ?? 0,
+      usedPrompts: JSON.stringify(usedPrompts ?? []),
+    },
   });
 
   return NextResponse.json({ ok: true });

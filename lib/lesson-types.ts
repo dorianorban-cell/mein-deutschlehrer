@@ -1,20 +1,30 @@
 export type LessonCategory = "word_order" | "case" | "gender" | "tense" | "vocab";
 
-export type ExerciseType = "fill_blank" | "multiple_choice" | "fix_sentence" | "voice_answer";
+export type ExerciseType =
+  | "fill_blank"
+  | "multiple_choice"
+  | "fix_sentence"
+  | "voice_answer"
+  | "spaced_replay"   // warm-up: recall a past mistake
+  | "cloze_listen"    // input: hear sentence, fill missing word
+  | "translation"     // output: EN → DE
+  | "sentence_mutation"; // output: 5 transforms of one base sentence
+
+export type SessionPhase = "warmup" | "practice" | "output";
 
 export interface LessonMistakeInput {
   original: string;
   corrected: string;
   rule: string;
-  count?: number;    // how many times this mistake was recorded
-  lastSeen?: Date;   // when last seen in conversation
+  count?: number;
+  lastSeen?: Date;
 }
 
 export interface ExplanationStep {
-  heading: string;          // bold title shown large on the slide
-  text: string;             // 2–3 sentences Max speaks aloud
-  examples: string[];       // 3+ example sentences displayed visually
-  table?: { label: string; de: string }[];  // declension/conjugation table rows
+  heading: string;
+  text: string;
+  examples: string[];
+  table?: { label: string; de: string }[];
 }
 
 export interface Exercise {
@@ -22,8 +32,16 @@ export interface Exercise {
   instruction: string;
   prompt: string;
   answer: string;
-  options?: string[];
+  options?: string[];      // multiple_choice
   hint?: string;
+  phase?: SessionPhase;
+  // cloze_listen: full sentence for TTS (prompt has ___ for the gap)
+  audioText?: string;
+  // spaced_replay: context line shown above the wrong sentence
+  context?: string;
+  // sentence_mutation: 5 sequential mutation tasks
+  mutations?: string[];
+  mutationAnswers?: string[];
 }
 
 export interface LessonContent {

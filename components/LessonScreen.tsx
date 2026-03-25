@@ -227,6 +227,7 @@ export default function LessonScreen({ profile, initialCategory }: Props) {
           isSpeaking={isSpeaking}
           onAnswer={handleExerciseAnswer}
           onComplete={() => setPhase("roleplay")}
+          speakText={speakText}
         />
       )}
 

@@ -25,10 +25,22 @@ export async function POST(request: Request) {
     select: { original: true, corrected: true, rule: true, count: true, lastSeen: true },
   });
 
+  // Fetch prompts used in last 3 lesson attempts (to avoid repeating)
+  const recentAttempts = await prisma.lessonAttempt.findMany({
+    where: { profileId, category },
+    orderBy: { completedAt: "desc" },
+    take: 3,
+    select: { usedPrompts: true },
+  });
+  const usedPrompts: string[] = recentAttempts.flatMap((a) => {
+    try { return JSON.parse(a.usedPrompts) as string[]; } catch { return []; }
+  });
+
   const prompt = buildLessonPrompt(
     { name: profile.name, level: profile.level },
     category,
-    mistakes
+    mistakes,
+    usedPrompts
   );
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -36,7 +48,7 @@ export async function POST(request: Request) {
   const tryGenerate = async (): Promise<LessonContent> => {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
+      max_tokens: 5000,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -50,7 +62,6 @@ export async function POST(request: Request) {
     const lesson = await tryGenerate();
     return NextResponse.json({ lesson });
   } catch {
-    // Retry once
     try {
       const lesson = await tryGenerate();
       return NextResponse.json({ lesson });

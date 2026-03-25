@@ -66,6 +66,7 @@ model LessonAttempt {
   completedAt DateTime @default(now())
   score       Int      @default(0)
   total       Int      @default(0)
+  usedPrompts String   @default("[]") // JSON array of exercise prompts shown this attempt
 
   profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 }

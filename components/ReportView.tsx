@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import SchwaecheRadar from "@/components/SchwaecheRadar";
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   case: "Akkusativ, Dativ, Genitiv",
@@ -408,6 +409,9 @@ export default function ReportView({
 
     <div className="flex-1 overflow-y-auto scrollbar-none">
       <div className="max-w-2xl mx-auto px-4 py-5">
+
+        {/* Schwäche-Radar */}
+        <SchwaecheRadar profileId={profileId} />
 
         {/* Global Üben button */}
         <button
