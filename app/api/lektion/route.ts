@@ -26,15 +26,21 @@ export async function POST(request: Request) {
   });
 
   // Fetch prompts used in last 3 lesson attempts (to avoid repeating)
-  const recentAttempts = await prisma.lessonAttempt.findMany({
-    where: { profileId, category },
-    orderBy: { completedAt: "desc" },
-    take: 3,
-    select: { usedPrompts: true },
-  });
-  const usedPrompts: string[] = recentAttempts.flatMap((a) => {
-    try { return JSON.parse(a.usedPrompts) as string[]; } catch { return []; }
-  });
+  // Wrapped in try-catch: usedPrompts column may not exist yet if db push hasn't run
+  let usedPrompts: string[] = [];
+  try {
+    const recentAttempts = await prisma.lessonAttempt.findMany({
+      where: { profileId, category },
+      orderBy: { completedAt: "desc" },
+      take: 3,
+      select: { usedPrompts: true },
+    });
+    usedPrompts = recentAttempts.flatMap((a) => {
+      try { return JSON.parse((a as { usedPrompts: string }).usedPrompts) as string[]; } catch { return []; }
+    });
+  } catch {
+    // Column doesn't exist yet — proceed without deduplication
+  }
 
   const prompt = buildLessonPrompt(
     { name: profile.name, level: profile.level },
@@ -54,13 +60,21 @@ export async function POST(request: Request) {
 
     const raw = response.content[0].type === "text" ? response.content[0].text : "";
     const match = raw.match(/<lesson>([\s\S]*?)<\/lesson>/);
-    if (!match) throw new Error("No <lesson> block in response");
+    if (!match) {
+      console.error("[lektion] No <lesson> block found. Raw response:", raw.slice(0, 500));
+      throw new Error("No <lesson> block in response");
+    }
 
     // Strip any markdown code fences that sometimes wrap the JSON
     let jsonText = match[1].trim();
     jsonText = jsonText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
-    return JSON.parse(jsonText) as LessonContent;
+    try {
+      return JSON.parse(jsonText) as LessonContent;
+    } catch (parseErr) {
+      console.error("[lektion] JSON.parse failed. jsonText[:500]:", jsonText.slice(0, 500));
+      throw parseErr;
+    }
   };
 
   try {
