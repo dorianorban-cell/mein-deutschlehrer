@@ -55,7 +55,12 @@ export async function POST(request: Request) {
     const raw = response.content[0].type === "text" ? response.content[0].text : "";
     const match = raw.match(/<lesson>([\s\S]*?)<\/lesson>/);
     if (!match) throw new Error("No <lesson> block in response");
-    return JSON.parse(match[1].trim()) as LessonContent;
+
+    // Strip any markdown code fences that sometimes wrap the JSON
+    let jsonText = match[1].trim();
+    jsonText = jsonText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+    return JSON.parse(jsonText) as LessonContent;
   };
 
   try {

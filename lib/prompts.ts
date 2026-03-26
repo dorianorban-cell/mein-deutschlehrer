@@ -102,150 +102,148 @@ export function buildLessonPrompt(
       ? `\nAVOID REPEATING these exercise prompts (user has seen them before — vary everything):\n${usedPrompts.slice(0, 20).map((p, i) => `${i + 1}. ${p}`).join("\n")}\n`
       : "";
 
-  return `You are Max, a German language teacher. Generate a comprehensive lesson for ${profile.name} (level: ${profile.level}) on: ${categoryLabel}.
+  // For vocab, sentence_mutation doesn't map well — use a simpler exercise mix
+  const isVocab = category === "vocab";
 
-${profile.name}'s real recent mistakes:
+  return `You are Max, a German language teacher. Generate a lesson for ${profile.name} (level: ${profile.level}) on: ${categoryLabel}.
+
+${profile.name}'s real recent mistakes in this category:
 ${mistakesText}
 ${avoidPromptsText}
-STEP 1 — Analyse: Read the "Regel" field of every mistake. Identify the SPECIFIC sub-pattern (e.g. if Kasus: is it Akkusativ? Dativ? Genitiv? Which prepositions trigger it?). Build the ENTIRE lesson around that exact sub-pattern.
+Analyse the "Regel" field of every mistake. Identify the SPECIFIC sub-pattern and build the ENTIRE lesson around it.
 
-Generate a lesson as valid JSON inside <lesson> tags with EXACTLY this structure:
-<lesson>
+Output ONLY a valid JSON object inside <lesson> tags. No text before or after. No comments inside the JSON.
+
+The JSON schema:
 {
-  "category": "${category}",
-  "categoryLabel": "${categoryLabel}",
-  "ruleHeadline": "SPECIFIC rule — e.g. 'Akkusativ nach Präpositionen: durch, für, gegen, ohne, um' (NOT just '${categoryLabel}')",
-  "explanationSteps": [
-    {
-      "heading": "Short bold title (e.g. 'Was ist der Akkusativ?')",
-      "text": "2–3 natural sentences Max says aloud — conversational teacher voice",
-      "examples": ["Ich kaufe den Kaffee.", "Er liebt die Musik.", "Wir besuchen einen Freund.", "Sie hat das Buch gelesen."],
-      "table": [
-        { "label": "Maskulin", "de": "den Mann / einen Mann" },
-        { "label": "Feminin", "de": "die Frau / eine Frau" },
-        { "label": "Neutrum", "de": "das Kind / ein Kind" },
-        { "label": "Plural", "de": "die Kinder / keine Kinder" }
-      ]
-    }
-  ],
-  "exercises": [
-    {
-      "type": "spaced_replay",
-      "phase": "warmup",
-      "instruction": "Erinnerst du dich? Korrigiere diesen Satz.",
-      "context": "Letzte Woche hast du gesagt: '[use one of ${profile.name}'s actual wrong sentences if available, otherwise invent a realistic one for this category]'",
-      "prompt": "[the wrong sentence — same as in context, without the leading text]",
-      "answer": "[the corrected sentence]",
-      "hint": "[the specific grammar rule that was violated]"
-    },
-    {
-      "type": "cloze_listen",
-      "phase": "warmup",
-      "instruction": "Hör zu und füll die Lücke aus.",
-      "audioText": "[complete sentence Max will speak aloud — e.g. 'Ich gehe mit meinem Freund ins Kino.']",
-      "prompt": "[same sentence with the key grammar word replaced by ___, e.g. 'Ich gehe mit ___ Freund ins Kino.']",
-      "answer": "[the missing word, e.g. 'meinem']",
-      "hint": "[grammar reminder]"
-    },
-    {
-      "type": "fill_blank",
-      "phase": "practice",
-      "instruction": "Füll die Lücke mit der richtigen Form aus.",
-      "prompt": "sentence with ___ marking the gap",
-      "answer": "the exact missing word",
-      "hint": "grammar reminder"
-    },
-    {
-      "type": "fill_blank",
-      "phase": "practice",
-      "instruction": "Welches Wort fehlt hier?",
-      "prompt": "another sentence with ___ gap",
-      "answer": "missing word",
-      "hint": "..."
-    },
-    {
-      "type": "multiple_choice",
-      "phase": "practice",
-      "instruction": "Welche Form ist korrekt?",
-      "prompt": "incomplete sentence",
-      "answer": "correct option",
-      "options": ["correct", "wrong1", "wrong2", "wrong3"],
-      "hint": "..."
-    },
-    {
-      "type": "fix_sentence",
-      "phase": "practice",
-      "instruction": "Korrigiere den Satz.",
-      "prompt": "sentence with a real mistake (use one of ${profile.name}'s actual wrong sentences if available)",
-      "answer": "corrected sentence",
-      "hint": "..."
-    },
-    {
-      "type": "translation",
-      "phase": "output",
-      "instruction": "Übersetze ins Deutsche.",
-      "prompt": "[a natural English sentence that requires the target grammar pattern — slightly above comfort zone]",
-      "answer": "[correct German translation]",
-      "hint": "[which grammar form to use and why]"
-    },
-    {
-      "type": "sentence_mutation",
-      "phase": "output",
-      "instruction": "Verändere den Satz auf 5 verschiedene Weisen.",
-      "prompt": "[a base German sentence that exercises the target grammar pattern]",
-      "answer": "[base sentence repeated here for reference]",
-      "mutations": [
-        "Vergangenheit (Perfekt oder Präteritum)",
-        "Fragesatz (umformulieren als Frage)",
-        "Nebensatz mit 'obwohl' oder 'weil'",
-        "Verneinung (negieren mit 'nicht' oder 'kein')",
-        "Passiv (Passivkonstruktion)"
-      ],
-      "mutationAnswers": [
-        "[past tense version]",
-        "[question version]",
-        "[subordinate clause version]",
-        "[negated version]",
-        "[passive version]"
-      ],
-      "hint": "Achte auf die Verbstellung in jedem Satz."
-    },
-    {
-      "type": "voice_answer",
-      "phase": "output",
-      "instruction": "Beantworte die Frage auf Deutsch.",
-      "prompt": "[open-ended question requiring the target grammar in the answer]",
-      "answer": "[example correct answer]",
-      "hint": "..."
-    },
-    {
-      "type": "cloze_listen",
-      "phase": "practice",
-      "instruction": "Hör zu und schreib das fehlende Wort.",
-      "audioText": "[a second different sentence Max will speak]",
-      "prompt": "[same sentence with key word replaced by ___]",
-      "answer": "[the missing word]",
-      "hint": "[grammar note]"
-    }
-  ]
+  "category": string,
+  "categoryLabel": string,
+  "ruleHeadline": string,        // very specific, e.g. "Dativ nach mit/bei/von/nach/seit/zu" — NOT just "${categoryLabel}"
+  "explanationSteps": ExplanationStep[],   // exactly 6 items
+  "exercises": Exercise[]                   // exactly ${isVocab ? 7 : 8} items
 }
-</lesson>
+
+ExplanationStep schema:
+{
+  "heading": string,       // short bold slide title
+  "text": string,          // 2–3 sentences Max says aloud
+  "examples": string[],    // at least 4 correct German example sentences
+  "table"?: TableRow[]     // ONLY when showing a full declension/conjugation table
+}
+TableRow schema: { "label": string, "de": string }
+
+Exercise types and their schemas:
+
+TYPE "spaced_replay" — recall a past mistake:
+{
+  "type": "spaced_replay", "phase": "warmup",
+  "instruction": "Erinnerst du dich? Korrigiere diesen Satz.",
+  "context": "Du hast früher gesagt:",
+  "prompt": "Ich gehe mit mein Freund ins Kino.",      // a REAL wrong sentence (use ${profile.name}'s actual mistake if available, else invent one for this category)
+  "answer": "Ich gehe mit meinem Freund ins Kino.",   // correct version
+  "hint": "nach 'mit' steht immer Dativ"
+}
+
+TYPE "cloze_listen" — hear a sentence, fill the gap:
+{
+  "type": "cloze_listen", "phase": "warmup",
+  "instruction": "Hör zu und füll die Lücke aus.",
+  "audioText": "Ich gehe mit meinem Freund ins Kino.",   // FULL sentence Max speaks (no gap)
+  "prompt": "Ich gehe mit ___ Freund ins Kino.",         // same sentence with ONE key word replaced by ___
+  "answer": "meinem",
+  "hint": "nach 'mit' steht Dativ → maskulin: meinem"
+}
+
+TYPE "fill_blank" — fill in the missing word:
+{
+  "type": "fill_blank", "phase": "practice",
+  "instruction": "Füll die Lücke aus.",
+  "prompt": "Er wartet auf ___ Bus.",
+  "answer": "den",
+  "hint": "nach 'auf' (Akkusativ, warten auf + Akk) → maskulin: den"
+}
+
+TYPE "multiple_choice" — pick the correct form:
+{
+  "type": "multiple_choice", "phase": "practice",
+  "instruction": "Welche Form ist korrekt?",
+  "prompt": "Ich helfe ___ Freund.",
+  "answer": "meinem",
+  "options": ["meinem", "meinen", "mein", "meiner"],
+  "hint": "helfen + Dativ"
+}
+
+TYPE "fix_sentence" — correct the error:
+{
+  "type": "fix_sentence", "phase": "practice",
+  "instruction": "Korrigiere den Satz.",
+  "prompt": "Ich gehe mit mein Freund.",
+  "answer": "Ich gehe mit meinem Freund.",
+  "hint": "mit + Dativ"
+}
+
+TYPE "translation" — translate English → German:
+{
+  "type": "translation", "phase": "output",
+  "instruction": "Übersetze ins Deutsche.",
+  "prompt": "I went to the cinema with my friend despite the bad weather.",
+  "answer": "Ich bin mit meinem Freund ins Kino gegangen, obwohl das Wetter schlecht war.",
+  "hint": "mit + Dativ; obwohl → Verb ans Ende"
+}
+
+${!isVocab ? `TYPE "sentence_mutation" — transform one sentence 5 ways:
+{
+  "type": "sentence_mutation", "phase": "output",
+  "instruction": "Verändere den Satz auf 5 verschiedene Weisen.",
+  "prompt": "Ich gehe mit meinem Freund ins Kino.",
+  "answer": "Ich gehe mit meinem Freund ins Kino.",
+  "mutations": [
+    "Vergangenheit (Perfekt)",
+    "Fragesatz",
+    "Nebensatz mit 'obwohl'",
+    "Verneinung",
+    "Passiv"
+  ],
+  "mutationAnswers": [
+    "Ich bin mit meinem Freund ins Kino gegangen.",
+    "Gehst du mit deinem Freund ins Kino?",
+    "Obwohl ich mit meinem Freund ins Kino gehe, bin ich müde.",
+    "Ich gehe nicht mit meinem Freund ins Kino.",
+    "Wird mit meinem Freund ins Kino gegangen."
+  ],
+  "hint": "Achte auf Verbstellung in jedem Satz."
+}` : ""}
+
+TYPE "voice_answer" — speak an answer:
+{
+  "type": "voice_answer", "phase": "output",
+  "instruction": "Beantworte die Frage auf Deutsch.",
+  "prompt": "Mit wem gehst du oft aus, und wohin?",
+  "answer": "Ich gehe oft mit meinem Freund ins Restaurant.",
+  "hint": "mit + Dativ"
+}
+
+EXERCISE ORDER for this lesson (${isVocab ? 7 : 8} total):
+1. spaced_replay (warmup)
+2. cloze_listen (warmup)
+3. fill_blank (practice)
+4. fill_blank (practice)
+5. multiple_choice (practice)
+6. fix_sentence (practice)
+7. translation (output)
+${!isVocab ? "8. sentence_mutation (output)" : "7b. voice_answer (output) — use this instead of sentence_mutation"}
 
 RULES:
-- explanationSteps: EXACTLY 6 steps. Each MUST have heading, text (2–3 sentences), examples (min 4 sentences).
-- table: include ONLY for steps showing full declension/conjugation (Maskulin/Feminin/Neutrum/Plural). Omit "table" key entirely otherwise.
-- Steps build logically: 1) what is it? 2) when to use it? 3) the forms/endings 4) after specific prepositions or verbs 5) common mistakes and traps 6) metacognitive wrap-up with ${profile.name}'s specific weak sub-pattern.
-- In exactly ONE step (step 5 or 6), include one example labeled "(Fortgeschritten)" to stretch the learner.
-- exercises: EXACTLY 10 exercises in the order shown above (warmup first, then practice, then output).
-- spaced_replay: use ${profile.name}'s actual wrong sentence verbatim if available. Otherwise invent a realistic wrong sentence for this grammar category.
-- cloze_listen: audioText must be a complete natural German sentence. The prompt must be the same sentence with exactly one key word replaced by ___.
-- sentence_mutation: all 5 mutationAnswers must be correct, natural German. Use a sentence that has clear mutations.
-- translation: the English prompt should be at the high end of ${profile.name}'s level — not trivially easy.
-- ruleHeadline: be extremely specific. If any mistake above is marked [recurring], append "(wiederkehrender Fehler)".
-- Phase tags: warmup for spaced_replay/first cloze_listen, practice for fill_blank/multiple_choice/fix_sentence/second cloze_listen, output for translation/sentence_mutation/voice_answer.
-- All German must be correct and natural. No emojis.
-- AVOID REPEATING any prompts from the "AVOID REPEATING" list above.
-- Return ONLY the <lesson>JSON</lesson> block, nothing else.`;
+- explanationSteps: exactly 6. Each needs heading + text (2–3 sentences) + examples (min 4). table only for declension/conjugation steps.
+- Steps: 1) definition 2) when to use 3) forms/endings 4) specific prepositions/verbs 5) common traps 6) metacognitive wrap-up for ${profile.name}'s specific weak sub-pattern.
+- In step 5 or 6: include one example starting with "(Fortgeschritten)" to stretch ${profile.name}.
+- spaced_replay prompt: use ${profile.name}'s actual wrong sentence verbatim if listed above. Otherwise invent a realistic wrong sentence for this exact sub-pattern.
+- cloze_listen: audioText is the FULL correct sentence. prompt is the SAME sentence with exactly ONE key word (the grammar target) replaced by ___.
+- sentence_mutation: choose a base sentence where all 5 mutations are natural and clearly different. All mutationAnswers must be correct German.
+- translation: use a real English sentence slightly above ${profile.name}'s current comfort zone.
+- ruleHeadline: extremely specific. Append "(wiederkehrender Fehler)" if any mistake above is marked [recurring].
+- AVOID REPEATING prompts listed above in the avoid list.
+- All German must be correct. No emojis. No comments in JSON. Return ONLY the <lesson>…</lesson> block.`;
 }
 
 import type { RoleplayScenario } from "./lesson-types";
